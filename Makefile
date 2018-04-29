@@ -1,4 +1,4 @@
 TARGET_KEYWORD=10G
-OBJS=read.o
+OBJS=init.o
 
 include pcie_uio/common.mk
