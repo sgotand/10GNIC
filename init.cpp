@@ -36,7 +36,6 @@ int main(void) {
 	buf32 = 0x0000000c;
 	dp.ReadPciReg(dp.kBaseAddressReg0, bar0_default);
 	//デフォルトのbar0が0x0000000c;かチェック
-	assert(bar0_default != buf32);
 	dp.WritePciReg(dp.kBaseAddressReg0, buf32);
 	dp.ReadPciReg(dp.kBaseAddressReg0, buf32);
 	dp.WritePciReg(dp.kBaseAddressReg0, bar0_default);
@@ -46,7 +45,6 @@ int main(void) {
 //map dgeneral control registers
 	// pcie_uio/mem.hで定義
 	Memory mem(2 * 1024 * 1024);
-
 	memset(mem.GetVirtPtr<void>(), 0, 2 * 1024 * 1024);
 
 	//map bar0 registers
@@ -65,9 +63,10 @@ int main(void) {
 
 
 //Initialization Sequence
+	puts("\n~~~~Initialization sequence~~~~\n");
 
 	// disable interrupts bywriting to teh EIMC register
-	puts("1. Disable interrupts");
+	puts("\n1. Disable interrupts");
 	buf32 = 0x7FFFFFFF; //set bits [30:0] , bits 31 is reserved
 	WriteReg(addr, RegEimc::kOffset, buf32);
 	/* sleep(1);  // unnecessary*/
@@ -87,7 +86,7 @@ int main(void) {
 	と記述あり???
 	link reset(set CTRL.LRST)???
 	*/
-	puts("2.1. device reset () software");
+	puts("\n2.1. device reset () software");
 	ReadReg(addr, RegCtrl::kOffset, buf32);
 	printf("CTRL: %08x\n", buf32);
 	buf32 |= RegCtrl::kFlagDeviceReset;
@@ -103,7 +102,7 @@ int main(void) {
 
 
 	// setting flow control (as is not enabled)
-	puts("2.2 setting flow control");
+	puts("\n2.2 setting flow control");
 	for(int i=0x3200; i<=0x32a0; i+=0x4) {
 		((uint32_t*)addr)[i/4] = 0;
 	}
@@ -113,7 +112,7 @@ int main(void) {
 	}
 
 	// link reset
-	puts("2.3. link reset");
+	puts("\n2.3. link reset");
 	ReadReg(addr, RegCtrl::kOffset, buf32);
 	buf32 |= RegCtrl::kFlagLinkReset;
 	WriteReg(addr, RegCtrl::kOffset, buf32);
@@ -121,14 +120,14 @@ int main(void) {
 
 
 	// disable interrupt (see 4.6.3.1)
-	puts("disable interrupt (after issuing a global reset)");
+	puts("\ndisable interrupt (after issuing a global reset)");
 	buf32 = 0x7FFFFFFF; //set bits [30:0] , bits 31 is reserved
 	WriteReg(addr, RegEimc::kOffset, buf32);
 	/* sleep(1);  // unnecessary*/
 
 
 	// Wait for the NVM auto-read completion.
-	puts("3. Wait for the NVM auto-read completion.");
+	puts("\n\n3. Wait for the NVM auto-read completion.");
 	while(1){
 		ReadReg(addr,RegEec::kOffset,buf32);
 		if(buf32&RegEec::kFlagAutoRd)break;
@@ -137,16 +136,21 @@ int main(void) {
 
 
 
-	puts("4. Wait for manegeability configuration done indication");
-	while(1){
+	puts("\n\n4. Wait for manegeability configuration done indication");
+/**	while(1){
 		ReadReg(addr,RegEemngctl::kOffset,buf32);
 		// FIXME: Port0 と 1 どちら(or 両方)を待つべきか判断して判定したい。
 		if(buf32 & ( RegEemngctl::kFlagCfgDone0 | RegEemngctl::kFlagCfgDone1))break;
+		printf("EEMNGCTL:%08x\n",buf32);
 		usleep(1000); //for mitigating busy wait
 	}
+**/	
+	puts("\tignore this stage(but wait 1 msec)");
+	usleep(1000);
 
 
-	puts("5. Wait until DMA initialization complets");
+
+	puts("\n\n5. Wait until DMA initialization complets");
 	while(1){
 		ReadReg(addr,RegRdrxctl::kOffset,buf32);
 		if(buf32 & RegRdrxctl::kFlagDmaidone)break;
@@ -154,15 +158,12 @@ int main(void) {
 	}
 
 
-	puts("6. Setup the PHY and the link");
-	puts("7. Initialize  all statistical counters");
-	puts("8. Initialize receive");
-	puts("9. Initialize transmit");
-	puts("10. Initialize FCoE");
-	puts("11. Initialize Virtualization support");
-	puts("12. Configure DCB");
-	puts("13. Configure Security");
-	puts("14. Enable interrupts");
+	puts("\n\n6. Setup the PHY and the link");
+	puts("\tdo nothing in this  stage");
+
+	puts("\n\n7. Initialize  all statistical counters");
+	puts("\tdo nothing in this  stage");
+
 
 
 	// read EEMNGCTL (Manageability EEPROM Mode Control Register)
