@@ -1,4 +1,4 @@
-#include<stdio.h>
+#include<assert.h>
 #include<stdint.h>
 #include<string.h>
 #include<fcntl.h>
@@ -16,12 +16,40 @@
 void debug() {
 }
 int main(void) {
+	// pcie_uio/pci.hで定義
 	DevPci dp;
+	uint16_t buf16;
+	uint32_t buf32;
+	uint64_t buf64;
+
+	// _uiofd,_configfdをオープン
 	dp.Init();
 
+// PCIe Configuraiton
+	// enable  Mastering
+	dp.ReadPciReg(dp.kCommandReg, buf16);
+	buf16 |= dp.kCommandRegBusMasterEnableFlag;
+	dp.WritePciReg(dp.kCommandReg, buf16);
+
+	// BAR0
+	uint32_t bar0_default;
+	buf32 = 0x0000000c;
+	dp.ReadPciReg(dp.kBaseAddressReg0, bar0_default);
+	//デフォルトのbar0が0x0000000c;かチェック
+	assert(bar0_default != buf32);
+	dp.WritePciReg(dp.kBaseAddressReg0, buf32);
+	dp.ReadPciReg(dp.kBaseAddressReg0, buf32);
+	dp.WritePciReg(dp.kBaseAddressReg0, bar0_default);
+	printf("BAR0 %08x\n", bar0_default);
+
+
+//map dgeneral control registers
+	// pcie_uio/mem.hで定義
 	Memory mem(2 * 1024 * 1024);
+
 	memset(mem.GetVirtPtr<void>(), 0, 2 * 1024 * 1024);
 
+	//map bar0 registers
 	int fd = open("/sys/class/uio/uio0/device/resource0", O_RDWR);
 	if(fd < 0) {
 		perror("open");
@@ -35,46 +63,47 @@ int main(void) {
 
 	close(fd);
 
-	uint16_t buf16;
-	uint32_t buf32;
-	uint64_t buf64;
 
-	// CommandReg
-	dp.ReadPciReg(dp.kCommandReg, buf16);
-	buf16 |= dp.kCommandRegBusMasterEnableFlag;
-	dp.WritePciReg(dp.kCommandReg, buf16);
+//Initialization Sequence
 
-	// BAR0
-	buf32 = 0x0000000c;
-	dp.WritePciReg(dp.kBaseAddressReg0, buf32);
-	dp.ReadPciReg(dp.kBaseAddressReg0, buf32);
-	printf("BAR0 %08x\n", buf32);
-
-	// disable interrupts
-	puts("disable interrupts");
-	buf32 = 0x7FFFFFFF;
+	// disable interrupts bywriting to teh EIMC register
+	puts("1. Disable interrupts");
+	buf32 = 0x7FFFFFFF; //set bits [30:0] , bits 31 is reserved
 	WriteReg(addr, RegEimc::kOffset, buf32);
-	sleep(1);
+	/* sleep(1);  // unnecessary*/
 
-	// read Status Reg
+	// read Status Reg (for print , unnecessary)
 	ReadReg(addr, RegStatus::kOffset, buf32);
 	printf("Status: %08x\n", buf32);
-	
-	// device reset
-	puts("device reset");
+
+
+	// global reset (see 4.6.3.2)
+	/*
+	initialization sequence の該当項目には
+		"Global reset = software reset + link reset"
+	と記述あり。
+	CTRL.RST(Device reset) には
+		"also refferd to as a software reset or global reset"
+	と記述あり???
+	link reset(set CTRL.LRST)???
+	*/
+	puts("2.1. device reset () software");
 	ReadReg(addr, RegCtrl::kOffset, buf32);
 	printf("CTRL: %08x\n", buf32);
 	buf32 |= RegCtrl::kFlagDeviceReset;
 	WriteReg(addr, RegCtrl::kOffset, buf32);
-	sleep(1);
+	//poll the CTRL.RST until it is cleared
+	while(1) {
+		ReadReg(addr, RegCtrl::kOffset,buf32);
+		if(!(buf32 & RegCtrl::kFlagDeviceReset))break;
+		usleep(1000); //for mitigating busy wait
+	};
+	//need  waiting at least 10ms after polling;
+	usleep(1100); // wait 10% extra
 
-	// disable interrupt
-	puts("disable interrupt");
-	buf32 = 0x7FFFFFFF;
-	WriteReg(addr, RegEimc::kOffset, buf32);
-	sleep(1);
 
-	// setting
+	// setting flow control (as is not enabled)
+	puts("2.2 setting flow control");
 	for(int i=0x3200; i<=0x32a0; i+=0x4) {
 		((uint32_t*)addr)[i/4] = 0;
 	}
@@ -82,16 +111,62 @@ int main(void) {
 	for(int i=0x3260; i<0x32a0; i+=0x4) {
 		((uint32_t*)addr)[i/4] = 1<<10;
 	}
-	
+
 	// link reset
-	puts("link reset");
+	puts("2.3. link reset");
 	ReadReg(addr, RegCtrl::kOffset, buf32);
 	buf32 |= RegCtrl::kFlagLinkReset;
 	WriteReg(addr, RegCtrl::kOffset, buf32);
-	sleep(1);
+	// sleep(1);
 
 
-	// read EEMNGCTL
+	// disable interrupt (see 4.6.3.1)
+	puts("disable interrupt (after issuing a global reset)");
+	buf32 = 0x7FFFFFFF; //set bits [30:0] , bits 31 is reserved
+	WriteReg(addr, RegEimc::kOffset, buf32);
+	/* sleep(1);  // unnecessary*/
+
+
+	// Wait for the NVM auto-read completion.
+	puts("3. Wait for the NVM auto-read completion.");
+	while(1){
+		ReadReg(addr,RegEec::kOffset,buf32);
+		if(buf32&RegEec::kFlagAutoRd)break;
+		usleep(1000); //for mitigating busy wait
+	}
+
+
+
+	puts("4. Wait for manegeability configuration done indication");
+	while(1){
+		ReadReg(addr,RegEemngctl::kOffset,buf32);
+		// FIXME: Port0 と 1 どちら(or 両方)を待つべきか判断して判定したい。
+		if(buf32 & ( RegEemngctl::kFlagCfgDone0 | RegEemngctl::kFlagCfgDone1))break;
+		usleep(1000); //for mitigating busy wait
+	}
+
+
+	puts("5. Wait until DMA initialization complets");
+	while(1){
+		ReadReg(addr,RegRdrxctl::kOffset,buf32);
+		if(buf32 & RegRdrxctl::kFlagDmaidone)break;
+		usleep(1000); //for mitigating busy wait
+	}
+
+
+	puts("6. Setup the PHY and the link");
+	puts("7. Initialize  all statistical counters");
+	puts("8. Initialize receive");
+	puts("9. Initialize transmit");
+	puts("10. Initialize FCoE");
+	puts("11. Initialize Virtualization support");
+	puts("12. Configure DCB");
+	puts("13. Configure Security");
+	puts("14. Enable interrupts");
+
+
+	// read EEMNGCTL (Manageability EEPROM Mode Control Register)
+	// なんで4回読んでる?
 	for(int i=0; i<3; i++) {
 		uint32_t a;
 		a = ((uint32_t*)addr)[0x0000/4];
@@ -101,7 +176,6 @@ int main(void) {
 		a = ((uint32_t*)addr)[0x2f00/4];
 		printf("RDRXCTL: %08x\n", (a));
 		sleep(1);
-
 	}
 
 	puts("Receive Addresses");
@@ -114,9 +188,8 @@ int main(void) {
 		printf("% 3d: %d %s\n", i, ad.Valid(), ad.FormatAddr().c_str());
 	}
 
+
 	WriteReg(addr, RegFctrl::kOffset, (uint32_t)(RegFctrl::kFlagMulticastEnable | RegFctrl::kFlagUnicastEnable | RegFctrl::kFlagBroadcastEnable));
-
-
 	printf("Page BASE Phys = %016lx, Virt = %p\n", mem.GetPhysPtr(), mem.GetVirtPtr<void>());
 
 	const int descnum = 1 * 8; // 8 entries, must be multiple of 8

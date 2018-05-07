@@ -3,16 +3,70 @@
 #include<cstdio>
 
 struct Reg { };
-struct RegCtrl : Reg {
-	static const uint32_t kOffset     = 0x00000000;
 
-	static const uint32_t kFlagLinkReset   = 1<< 3;
-	static const uint32_t kFlagDeviceReset = 1<<26;
-};
+// General Control Registers (see p.483)
+	struct RegCtrl : Reg {
+		static const uint32_t kOffset     = 0x00000000;
 
-struct RegStatus {
-	static const uint32_t kOffset     = 0x00000008;
-};
+		static const uint32_t kFlagLinkReset   = 1<< 3;
+		static const uint32_t kFlagDeviceReset = 1<<26;
+	};
+
+	struct RegStatus {
+		static const uint32_t kOffset     = 0x00000008;
+	};
+
+	// CTRL_EXT
+	// ESDP
+	// PHY_GPIO
+	// MAC_GPIO
+	// PHYINT_STATUS0
+	// PHYINT_STATUS1
+	// PHYINT_STATUS2
+	// LEDCTL
+	// EXVET
+	// EXVET_T
+	// FACTPS
+	// GRC
+	// DEV_FUNC_EN
+	// I2CCMD
+	// I2CPARAMS
+
+// NVM Registers (see p.483)
+	struct RegEec {
+		static const uint32_t kOffset 		= 0x00010010;
+		static const uint32_t kFlagAutoRd	= 1 << 9;
+	};
+
+	// FLA
+	struct RegEemngctl {
+		static const uint32_t kOffset 		= 0x00010110;
+		static const uint32_t kFlagCfgDone0 = 1<<18;
+		static const uint32_t kFlagCfgDone1 = 1<<19;
+	};
+	// EEMNGDATA
+	// FLMNGCTL
+	// FLMNGDATA
+	// JEDEC_ID_1
+
+
+// Flow Control Registers
+	struct RegFcttvn {
+		static const uint32_t kOffset 	= 0x00003200;
+		static const uint32_t kNlimit	= 4;
+	};
+	struct RegFcrtl {
+		static const uint32_t kOffset 	= 0x00003220;
+		static const uint32_t kNlimit 	= 8;
+	};
+	struct RegFcrth {
+		static const uint32_t kOffset 	= 0x00003220;
+		static const uint32_t kNlimit 	= 8;
+	};
+
+
+
+
 struct RegLinks {
 	static const uint32_t kOffset = 0x000042A4;
 	static const uint32_t kFlagLinkStatusUp = 1<<7;
@@ -29,10 +83,8 @@ struct RegEimc {
 	static const uint32_t kOffset     = 0x00000888;
 };
 struct RegRdrxctl {
-	static const uint32_t kOffset     = 0x00002F00;
-};
-struct RegEemngctl {
-	static const uint32_t kOffset     = 0x00010110;
+	static const uint32_t kOffset     		= 0x00002F00;
+	static const uint32_t kFlagDmaidone 	= 1<<3;
 };
 struct RegFctrl {
 	static const uint32_t kOffset     = 0x00005080;
@@ -41,6 +93,8 @@ struct RegFctrl {
 	static const uint32_t kFlagBroadcastEnable = 1<<10;
 };
 
+
+// Receive Descripter Base address
 struct RegRdba {
 	static uint32_t Offset(size_t idx) {
 		// FIXME もっと他と同じ感じで書きたいですねぇ
@@ -73,6 +127,8 @@ struct RegRdt {
 		return 0x0000D018 + 0x40 * (idx - 64);
 	}
 };
+
+// Receive Address(low,high)
 struct RegRa {
 	static uint32_t Offset(size_t idx) {
 		// FIXME もっと他と同じ感じで書きたいですねぇ
@@ -110,13 +166,13 @@ struct RegRxctrl {
 };
 
 void ReadReg(void *addr, uint32_t off, uint8_t &val) {
-	val = ((uint8_t *)addr)[off];		
+	val = ((uint8_t *)addr)[off];
 }
 void ReadReg(void *addr, uint32_t off, uint16_t &val) {
-	val = ((uint16_t *)addr)[off/2];		
+	val = ((uint16_t *)addr)[off/2];
 }
 void ReadReg(void *addr, uint32_t off, uint32_t &val) {
-	val = ((uint32_t *)addr)[off/4];		
+	val = ((uint32_t *)addr)[off/4];
 }
 void ReadReg(void *addr, uint32_t off, uint64_t &val) {
 	uint32_t t;
@@ -127,21 +183,21 @@ void ReadReg(void *addr, uint32_t off, uint64_t &val) {
 }
 
 void WriteReg(void *addr, uint32_t off, uint8_t val) {
-	((uint8_t *)addr)[off] = val;		
+	((uint8_t *)addr)[off] = val;
 	__asm__ volatile("":::"memory");
 	uint8_t t;
 	ReadReg(addr, off, t);
 	printf(" 8 %08x %08x %08x\n", off, val, t);
 }
 void WriteReg(void *addr, uint32_t off, uint16_t val) {
-	((uint16_t *)addr)[off/2] = val;		
+	((uint16_t *)addr)[off/2] = val;
 	__asm__ volatile("":::"memory");
 	uint16_t t;
 	ReadReg(addr, off, t);
 	printf("16 %08x %08x %08x\n", off, val, t);
 }
 void WriteReg(void *addr, uint32_t off, uint32_t val) {
-	((uint32_t *)addr)[off/4] = val;		
+	((uint32_t *)addr)[off/4] = val;
 	__asm__ volatile("":::"memory");
 	uint32_t t;
 	ReadReg(addr, off, t);
