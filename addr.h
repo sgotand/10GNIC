@@ -1,6 +1,7 @@
 #include <sstream>
+#include <iomanip>
 
-class Addr {
+class HwAddr {
 	public:
 	enum EType
 	{
@@ -8,7 +9,7 @@ class Addr {
 		ETag = 1,
 	};
 
-	Addr(uint64_t raw) {
+	HwAddr(uint64_t raw) {
 		_high = raw >> 32;
 		_low = raw;
 	}
@@ -23,20 +24,42 @@ class Addr {
 
 	std::string FormatAddr() {
 		std::stringstream ss;
-		ss << std::hex;
-		ss << ((_low  & 0x000000FF) >>  0) << ":";
-		ss << ((_low  & 0x0000FF00) >>  8) << ":";
-		ss << ((_low  & 0x00FF0000) >> 16) << ":";
-		ss << ((_low  & 0xFF000000) >> 24) << ":";
-		ss << ((_high & 0x000000FF) >>  0) << ":";
-		ss << ((_high & 0x0000FF00) >>  8);
+		ss << std::hex << std::setfill('0');
+		ss << std::setw(2) << ((_high & 0x0000FF00) >>  8) << ":";
+		ss << std::setw(2) << ((_high & 0x000000FF) >>  0) << ":";
+		ss << std::setw(2) << ((_low  & 0xFF000000) >> 24) << ":";
+		ss << std::setw(2) << ((_low  & 0x00FF0000) >> 16) << ":";
+		ss << std::setw(2) << ((_low  & 0x0000FF00) >>  8) << ":";
+		ss << std::setw(2) << ((_low  & 0x000000FF) >>  0);
 		return ss.str();
 	}
 
 
 
 	private:
-	Addr(); // hide
+	HwAddr(); // hide
 	uint32_t _high, _low;
+
+};
+
+class Ip4Addr {
+	public:
+	Ip4Addr(uint32_t raw) {
+		_low = raw;
+	}
+
+	std::string Format() {
+		std::stringstream ss;
+		ss << std::dec;
+		ss << ((_low & 0xFF000000) >> 24) << ".";
+		ss << ((_low & 0x00FF0000) >> 16) << ".";
+		ss << ((_low & 0x0000FF00) >>  8) << ".";
+		ss << ((_low & 0x000000FF) >>  0);
+		return ss.str();
+	}
+
+	private:
+	Ip4Addr(); // hide
+	uint32_t _low;
 
 };

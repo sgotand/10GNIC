@@ -36,6 +36,7 @@ int main(void) {
 	buf32 = 0x0000000c;
 	dp.ReadPciReg(dp.kBaseAddressReg0, bar0_default);
 	//デフォルトのbar0が0x0000000c;かチェック
+	assert(bar0_default == buf32);
 	dp.WritePciReg(dp.kBaseAddressReg0, buf32);
 	dp.ReadPciReg(dp.kBaseAddressReg0, buf32);
 	dp.WritePciReg(dp.kBaseAddressReg0, bar0_default);
@@ -45,6 +46,7 @@ int main(void) {
 //map dgeneral control registers
 	// pcie_uio/mem.hで定義
 	Memory mem(2 * 1024 * 1024);
+
 	memset(mem.GetVirtPtr<void>(), 0, 2 * 1024 * 1024);
 
 	//map bar0 registers
@@ -63,10 +65,9 @@ int main(void) {
 
 
 //Initialization Sequence
-	puts("\n~~~~Initialization sequence~~~~\n");
 
 	// disable interrupts bywriting to teh EIMC register
-	puts("\n1. Disable interrupts");
+	puts("1. Disable interrupts");
 	buf32 = 0x7FFFFFFF; //set bits [30:0] , bits 31 is reserved
 	WriteReg(addr, RegEimc::kOffset, buf32);
 	/* sleep(1);  // unnecessary*/
@@ -86,7 +87,7 @@ int main(void) {
 	と記述あり???
 	link reset(set CTRL.LRST)???
 	*/
-	puts("\n2.1. device reset () software");
+	puts("2.1. device reset () software");
 	ReadReg(addr, RegCtrl::kOffset, buf32);
 	printf("CTRL: %08x\n", buf32);
 	buf32 |= RegCtrl::kFlagDeviceReset;
@@ -102,7 +103,7 @@ int main(void) {
 
 
 	// setting flow control (as is not enabled)
-	puts("\n2.2 setting flow control");
+	puts("2.2 setting flow control");
 	for(int i=0x3200; i<=0x32a0; i+=0x4) {
 		((uint32_t*)addr)[i/4] = 0;
 	}
@@ -112,7 +113,7 @@ int main(void) {
 	}
 
 	// link reset
-	puts("\n2.3. link reset");
+	puts("2.3. link reset");
 	ReadReg(addr, RegCtrl::kOffset, buf32);
 	buf32 |= RegCtrl::kFlagLinkReset;
 	WriteReg(addr, RegCtrl::kOffset, buf32);
@@ -120,14 +121,14 @@ int main(void) {
 
 
 	// disable interrupt (see 4.6.3.1)
-	puts("\ndisable interrupt (after issuing a global reset)");
+	puts("disable interrupt (after issuing a global reset)");
 	buf32 = 0x7FFFFFFF; //set bits [30:0] , bits 31 is reserved
 	WriteReg(addr, RegEimc::kOffset, buf32);
 	/* sleep(1);  // unnecessary*/
 
 
 	// Wait for the NVM auto-read completion.
-	puts("\n\n3. Wait for the NVM auto-read completion.");
+	puts("3. Wait for the NVM auto-read completion.");
 	while(1){
 		ReadReg(addr,RegEec::kOffset,buf32);
 		if(buf32&RegEec::kFlagAutoRd)break;
@@ -136,21 +137,17 @@ int main(void) {
 
 
 
-	puts("\n\n4. Wait for manegeability configuration done indication");
-/**	while(1){
+	puts("4. Wait for manegeability configuration done indication");
+/**
+	while(1){
 		ReadReg(addr,RegEemngctl::kOffset,buf32);
 		// FIXME: Port0 と 1 どちら(or 両方)を待つべきか判断して判定したい。
 		if(buf32 & ( RegEemngctl::kFlagCfgDone0 | RegEemngctl::kFlagCfgDone1))break;
-		printf("EEMNGCTL:%08x\n",buf32);
 		usleep(1000); //for mitigating busy wait
 	}
-**/	
-	puts("\tignore this stage(but wait 1 msec)");
-	usleep(1000);
+**/
 
-
-
-	puts("\n\n5. Wait until DMA initialization complets");
+	puts("5. Wait until DMA initialization complets");
 	while(1){
 		ReadReg(addr,RegRdrxctl::kOffset,buf32);
 		if(buf32 & RegRdrxctl::kFlagDmaidone)break;
@@ -158,12 +155,42 @@ int main(void) {
 	}
 
 
-	puts("\n\n6. Setup the PHY and the link");
-	puts("\tdo nothing in this  stage");
+	puts("6. Setup the PHY and the link");
+	puts("7. Initialize  all statistical counters");
+	puts("8. Initialize receive");
+	puts("9. Initialize transmit");
+		ReadReg(addr, RegDmatxctl::kOffset, buf32);
+		assert(!(buf32 & RegDmatxctl::kFlagTransmitEnable));
+		buf32 &= (0xFFFFFFFF ^ (RegDmatxctl::kFlagTransmitEnable));
+		printf("DMATXCTL:%08x (TEのみ0であることを確認、他は設定せず)\n",buf32);
+		WriteReg(addr, RegDmatxctl::kOffset, buf32);
 
-	puts("\n\n7. Initialize  all statistical counters");
-	puts("\tdo nothing in this  stage");
+		ReadReg(addr,  RegDtxtcpflgl::kOffset, buf32);
+		printf("DTXTCPFLGL:%08x (設定せず)\n",buf32);
 
+		ReadReg(addr,  RegDtxtcpflgh::kOffset, buf32);
+		printf("DTXTCPFLGH:%08x (設定せず)\n",buf32);
+
+
+		// RTTDCSがない
+
+
+//		ReadReg(addr, RegDtxmxszrq::kOffset, buf32);
+//		printf("DTXMXSZRQ:%08x\n",buf32);
+
+		
+//		WriteReg(addr, RegDtxmxszrq::kOffset, buf32);
+
+
+		// RTTDCSがない
+
+
+
+	puts("10. Initialize FCoE");
+	puts("11. Initialize Virtualization support");
+	puts("12. Configure DCB");
+	puts("13. Configure Security");
+	puts("14. Enable interrupts");
 
 
 	// read EEMNGCTL (Manageability EEPROM Mode Control Register)
@@ -179,86 +206,80 @@ int main(void) {
 		sleep(1);
 	}
 
-	puts("Receive Addresses");
-	for(int i=0; i<8; i++) {
-		uint64_t raw;
-		ReadReg(addr, RegRa::Offset(i), raw);
-
-		Addr ad(raw);
-
-		printf("% 3d: %d %s\n", i, ad.Valid(), ad.FormatAddr().c_str());
-	}
 
 
-	WriteReg(addr, RegFctrl::kOffset, (uint32_t)(RegFctrl::kFlagMulticastEnable | RegFctrl::kFlagUnicastEnable | RegFctrl::kFlagBroadcastEnable));
-	printf("Page BASE Phys = %016lx, Virt = %p\n", mem.GetPhysPtr(), mem.GetVirtPtr<void>());
+	 WriteReg(addr, RegFctrl::kOffset, (uint32_t)(RegFctrl::kFlagMulticastEnable | RegFctrl::kFlagUnicastEnable | RegFctrl::kFlagBroadcastEnable));
+	 printf("Page BASE Phys = %016lx, Virt = %p\n", mem.GetPhysPtr(), mem.GetVirtPtr<void>());
 
-	const int descnum = 1 * 8; // 8 entries, must be multiple of 8
-	WriteReg(addr, RegRdba::Offset(0), mem.GetPhysPtr());
-	WriteReg(addr, RegRdlen::Offset(0), (uint32_t)descnum * 16);
-	WriteReg(addr, RegRdh::Offset(0), (uint32_t)0);
-	WriteReg(addr, RegRdt::Offset(0), (uint32_t)0);
+	 const int descnum = 1 * 8; // 8 entries, must be multiple of 8
+	 WriteReg(addr, RegTdba::Offset(0), mem.GetPhysPtr());
+	 WriteReg(addr, RegTdlen::Offset(0), (uint32_t)descnum * 16);
+	 WriteReg(addr, RegTdh::Offset(0), (uint32_t)0);
+	 WriteReg(addr, RegTdt::Offset(0), (uint32_t)0);
 
 
-	const int rbufsz = 2 * 1024;
-	size_t rbufbase = (mem.GetPhysPtr() + descnum * 16 + 2047) / 2048 * 2048;
+	//同じデータを送り続ける。
+	//const int rbufsz = 2 * 1024;
+	const int rbufsz = 256;
+	size_t rbufbase = (mem.GetPhysPtr() + descnum * 16 + 2047);
 	for(int i=0; i<descnum; i++) {
-		uint64_t *desc = &mem.GetVirtPtr<uint64_t>()[i * 2];
-		size_t buf = rbufbase + i * rbufsz;
+	 	uint64_t *desc = &mem.GetVirtPtr<uint64_t>()[i * 2];
+	 	size_t buf = rbufbase ; //+ i * rbufsz;
+	 	
 		desc[0] = buf;
+	 	desc[1] |= 1<<24; //set End of packet 
+		desc[1] |= 256;
 		printf("RDesc[%d](%p) = %p\n", i, desc, (void*)buf);
+	
 	}
+	uint8_t *databuf = (mem.GetVirtPtr<uint8_t>() + descnum * 16 + 2047);
 
-	buf32 = rbufsz / 1024;
-	WriteReg(addr, RegSrrctl::Offset(0), (uint32_t)0x2);
-	WriteReg(addr, RegRscctl::Offset(0), (uint32_t)0);
-	WriteReg(addr, RegRxdctl::Offset(0), RegRxdctl::kFlagReceiveQueueEnable);
 
-	while(true) {
-		ReadReg(addr, RegRxdctl::Offset(0), buf32);
-		if(buf32 & RegRxdctl::kFlagReceiveQueueEnable)
-			break;
-		__asm__ volatile("" ::: "memory");
-	}
-	WriteReg(addr, RegRdt::Offset(0), (uint32_t)descnum-1);
-	WriteReg(addr, RegRxctrl::kOffset, RegRxctrl::kFlagEnable);
+	//memset(databuf,0xFF,1024);
+	
+	char tmp[] = "\x33\x33\x00\x00\x00\x02\x1c\xc0\x35\x01\x9f\xd3\x86\xdd\x60\x01\x03\x55\x00\x08\x3a\xff\xfe\x80\x00\x00\x00\x00\x00\x00\x18\x7f" \
+	"\x3a\x29\x96\x51\x07\xc6\xff\x02\x00\x00\x00\x00\x00\x00\x00\x00" \
+	"\xff\xff\xff\xff\xff\x02\x85\x00\x8c\x77\x00\x00\x00\x00\xFF";
+	memcpy(databuf,tmp,sizeof(tmp));
+
+
+	//buf32 = rbufsz / 1024;
+	//WriteReg(addr, RegSrrctl::Offset(0), (uint32_t)0x2);
+	//WriteReg(addr, RegRscctl::Offset(0), (uint32_t)0);
+	//WriteReg(addr, RegRxdctl::Offset(0), RegRxdctl::kFlagReceiveQueueEnable);
+
+	// while(true) {
+	// 	ReadReg(addr, RegRxdctl::Offset(0), buf32);
+	// 	if(buf32 & RegRxdctl::kFlagReceiveQueueEnable)
+	// 		break;
+	// 	__asm__ volatile("" ::: "memory");
+	// }
+	// WriteReg(addr, RegRdt::Offset(0), (uint32_t)descnum-1);
+	// WriteReg(addr, RegRxctrl::kOffset, RegRxctrl::kFlagEnable);
 
 	// enable **all** interrupts
+	 WriteReg(addr, RegTdt::Offset(0), (uint32_t)1);
+	sleep(1);
+	 ReadReg(addr, RegTdh::Offset(0),buf32);
+	printf("head %08x\n",buf32);
+	 ReadReg(addr, RegTdt::Offset(0),buf32);
+	printf("tail %08x\n",buf32);
+		ReadReg(addr, RegDmatxctl::kOffset, buf32);
+		buf32 |= RegDmatxctl::kFlagTransmitEnable;
+		WriteReg(addr, RegDmatxctl::kOffset, buf32);
+	sleep(1); 
 	puts("enable interrupts");
-	buf32 = 0x7FFFFFFF;
-	WriteReg(addr, RegEims::kOffset, buf32);
+	 buf32 = 0x7FFFFFFF;
+	 WriteReg(addr, RegEims::kOffset, buf32);
+	 sleep(1);
+
+	 WriteReg(addr, RegTdt::Offset(0), (uint32_t)1);
 	sleep(1);
 
-	uint8_t *rbuf0 = (uint8_t*)(((size_t)mem.GetVirtPtr<uint8_t>() + descnum * 16 + 2047) / 2048 * 2048);
-	printf("rbuf0 %p\n", rbuf0);
-	for(int i=0; i<sizeof(info)/sizeof(Info); i++) {
-		ReadReg(addr, info[i].offset, buf32);
-		printf("0x%08x: % 20s %08X\n", info[i].offset, info[i].str, buf32);
-	}
-	while(true) {
-		ReadReg(addr, RegRdh::Offset(0), buf32);
-		if(buf32 != 0) break;
-		sleep(1);
-	}
-	while(true) {
-		ReadReg(addr, RegRdh::Offset(0), buf32);
-		printf("HEAD %08x\n", buf32);
-		ReadReg(addr, RegStatus::kOffset, buf32);
-		printf("Status %08x\n", buf32);
-
-		uint64_t *desc = &mem.GetVirtPtr<uint64_t>()[0];
-		printf("%016lx %016lx\n", desc[0], desc[1]);
-		for(int i=0; i<8; i++){
-			for(int j=0; j<32; j++)
-				printf("%02x ", rbuf0[i*2048 + j]);
-			puts("");
-		}
-		ReadReg(addr, RegLinks::kOffset, buf32);
-		const char *link_speed[] = {"None", "100M", "1G", "10G"};
-		printf("LINKS: %s(%s)\n", (buf32 & RegLinks::kFlagLinkStatusUp) ? "UP" : "DOWN", link_speed[(buf32 & RegLinks::kMaskLinkSpeed) >> RegLinks::kOffsetLinkSpeed]);
-		sleep(1);
-	}
-
+	 ReadReg(addr, RegTdh::Offset(0),buf32);
+	printf("head %08x\n",buf32);
+	 ReadReg(addr, RegTdt::Offset(0),buf32);
+	printf("tail %08x\n",buf32);
 
 	return 0;
 }

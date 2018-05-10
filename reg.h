@@ -166,6 +166,21 @@ struct Reg { };
 
 //Transmit Registers
 
+	struct RegDmatxctl {
+		static const uint32_t kOffset     = 0x00004A80;
+		static const uint32_t kFlagTransmitEnable = 1<<0;
+	};
+
+	struct RegDtxtcpflgl {
+		static const uint32_t kOffset     = 0x00004A88;
+	};
+
+	struct RegDtxtcpflgh {
+		static const uint32_t kOffset     = 0x00004A8C;
+	};
+
+
+
 	struct RegTdba {
 		static uint32_t Offset(size_t idx) {
 			// FIXME もっと他と同じ感じで書きたいですねぇ
