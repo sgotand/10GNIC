@@ -1,3 +1,6 @@
+#ifndef REG__
+#define REG__
+
 #include<cstdint>
 #include<cassert>
 #include<cstdio>
@@ -319,3 +322,5 @@ struct Reg { };
 		ReadReg(addr, off, t);
 		printf("64 %08x %016lx %016lx\n", off, val, t);
 	}
+
+#endif

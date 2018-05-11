@@ -3,11 +3,11 @@
 
 class EtherReader {
 	public:
-	enum EType {
-		Unknown = 0,
-		IPv4,
-		ARP,
-	};
+		enum EType {
+			Unknown = 0,
+			IPv4,
+			ARP,
+		};
 
 		EtherReader(const void *buf) {
 			_buf = (uint8_t*)buf;

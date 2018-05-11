@@ -1,3 +1,6 @@
+#ifndef DEBUG__
+#define DEBUG__
+
 #include <stdint.h>
 
 struct Info {
@@ -52,3 +55,4 @@ Info info[] =
     {0x03C00, "RXPBSIZE0"},
     {0x01030, "qprc00"},
   };
+#endif

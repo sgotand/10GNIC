@@ -1,3 +1,7 @@
+
+#ifndef DEVICE__
+#define DEVICE__
+
 #include<assert.h>
 #include<stdint.h>
 #include<string.h>
@@ -9,37 +13,59 @@
 #include "pcie_uio/pci.h"
 #include "pcie_uio/mem.h"
 
+
 #include "reg.h"
 #include "addr.h"
 #include "debug.h"
 
-void debug() {
-}
-int main(void) {
-	// pcie_uio/pci.hで定義
-	DevPci dp;
+
+class DevNic: public DevPci {
+	public:
+	void Init();
+
+
+
+/*
+ *  DevPciのメンバ（一部）
+ *
+ *  void ReadPciReg(uint16_t reg,uint*_t &val);
+ *  void WritePciReg(uint16_t reg,uint*_t &val);
+ *  void WaitInterrupt();
+ *  bool HasClassCodes(~~~~~~~~);
+ *  
+ *  private:
+ *  int _uiofd;
+ *  int _configfd;
+ *
+ */
+
+
+};
+
+
+
+void DevNic::Init(){
+
+	DevPci::Init();
+	
 	uint16_t buf16;
 	uint32_t buf32;
 	uint64_t buf64;
-
-	// _uiofd,_configfdをオープン
-	dp.Init();
-
 // PCIe Configuraiton
 	// enable  Mastering
-	dp.ReadPciReg(dp.kCommandReg, buf16);
-	buf16 |= dp.kCommandRegBusMasterEnableFlag;
-	dp.WritePciReg(dp.kCommandReg, buf16);
+	ReadPciReg(kCommandReg, buf16);
+	buf16 |= kCommandRegBusMasterEnableFlag;
+	WritePciReg(kCommandReg, buf16);
 
 	// BAR0
 	uint32_t bar0_default;
 	buf32 = 0x0000000c;
-	dp.ReadPciReg(dp.kBaseAddressReg0, bar0_default);
+	ReadPciReg(kBaseAddressReg0, bar0_default);
 	//デフォルトのbar0が0x0000000c;かチェック
 	assert(bar0_default == buf32);
-	dp.WritePciReg(dp.kBaseAddressReg0, buf32);
-	dp.ReadPciReg(dp.kBaseAddressReg0, buf32);
-	dp.WritePciReg(dp.kBaseAddressReg0, bar0_default);
+	WritePciReg(kBaseAddressReg0, buf32);
+	ReadPciReg(kBaseAddressReg0, buf32);
+	WritePciReg(kBaseAddressReg0, bar0_default);
 	printf("BAR0 %08x\n", bar0_default);
 
 
@@ -53,12 +79,12 @@ int main(void) {
 	int fd = open("/sys/class/uio/uio0/device/resource0", O_RDWR);
 	if(fd < 0) {
 		perror("open");
-		return -1;
+		return ;
 	}
 	void *addr = mmap(NULL, 1<<18, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 	if(addr == MAP_FAILED) {
 		perror("mmap");
-		return -1;
+		return ;
 	}
 
 	close(fd);
@@ -211,12 +237,19 @@ int main(void) {
 	 WriteReg(addr, RegFctrl::kOffset, (uint32_t)(RegFctrl::kFlagMulticastEnable | RegFctrl::kFlagUnicastEnable | RegFctrl::kFlagBroadcastEnable));
 	 printf("Page BASE Phys = %016lx, Virt = %p\n", mem.GetPhysPtr(), mem.GetVirtPtr<void>());
 
+
+
+
 	 const int descnum = 1 * 8; // 8 entries, must be multiple of 8
 	 WriteReg(addr, RegTdba::Offset(0), mem.GetPhysPtr());
 	 WriteReg(addr, RegTdlen::Offset(0), (uint32_t)descnum * 16);
 	 WriteReg(addr, RegTdh::Offset(0), (uint32_t)0);
 	 WriteReg(addr, RegTdt::Offset(0), (uint32_t)0);
 
+	
+	char tmp[] = "\x33\x33\x00\x00\x00\x02\x1c\xc0\x35\x01\x9f\xd3\x86\xdd\x60\x01\x03\x55\x00\x08\x3a\xff\xfe\x80\x00\x00\x00\x00\x00\x00\x18\x7f" \
+	"\x3a\x29\x96\x51\x07\xc6\xff\x02\x00\x00\x00\x00\x00\x00\x00\x00" \
+	"\xff\xff\xff\xff\xff\x02\x85\x00\x8c\x77\x00\x00\x00\x00\xFF";
 
 	//同じデータを送り続ける。
 	//const int rbufsz = 2 * 1024;
@@ -226,9 +259,10 @@ int main(void) {
 	 	uint64_t *desc = &mem.GetVirtPtr<uint64_t>()[i * 2];
 	 	size_t buf = rbufbase ; //+ i * rbufsz;
 	 	
-		desc[0] = buf;
-	 	desc[1] |= 1<<24; //set End of packet 
-		desc[1] |= 42;
+		//desc[0] = buf;
+	 	desc[0]  = (uint64_t)tmp;
+		desc[1] |= 1<<24; //set End of packet 
+		desc[1] |= 256;
 		printf("RDesc[%d](%p) = %p\n", i, desc, (void*)buf);
 	
 	}
@@ -236,21 +270,12 @@ int main(void) {
 
 
 	//memset(databuf,0xFF,1024);
-	
-	char tmp[] = 	"\xFF\xFF\xFF\xFF\xFF\xFF" \ 
-			"\x12\x34\x56\x78\x9A\xBC" \ 
-	"\x08\x06"\
-	"\x00\x01"\
-	"\x08\x00"\
-	"\x06"\    
-	"\x04"\    
-	"\x00\x01"\
-	"\xfe\x80\x9F\xF2\xE4\x19"\
-	"\x00\x00\x00\x01" \
-	"\xFF\xFF\xFF\xFF\xFF\xFF" \
-	"\x01\x02\x03\x06";
+/*	
+	char tmp[] = "\x33\x33\x00\x00\x00\x02\x1c\xc0\x35\x01\x9f\xd3\x86\xdd\x60\x01\x03\x55\x00\x08\x3a\xff\xfe\x80\x00\x00\x00\x00\x00\x00\x18\x7f" \
+	"\x3a\x29\x96\x51\x07\xc6\xff\x02\x00\x00\x00\x00\x00\x00\x00\x00" \
+	"\xff\xff\xff\xff\xff\x02\x85\x00\x8c\x77\x00\x00\x00\x00\xFF";
 	memcpy(databuf,tmp,sizeof(tmp));
-
+*/
 
 	//buf32 = rbufsz / 1024;
 	//WriteReg(addr, RegSrrctl::Offset(0), (uint32_t)0x2);
@@ -282,7 +307,7 @@ int main(void) {
 	 WriteReg(addr, RegEims::kOffset, buf32);
 	 sleep(1);
 
-	 WriteReg(addr, RegTdt::Offset(0), (uint32_t)3);
+	 WriteReg(addr, RegTdt::Offset(0), (uint32_t)1);
 	sleep(1);
 
 	 ReadReg(addr, RegTdh::Offset(0),buf32);
@@ -290,5 +315,16 @@ int main(void) {
 	 ReadReg(addr, RegTdt::Offset(0),buf32);
 	printf("tail %08x\n",buf32);
 
-	return 0;
-}
+	
+};
+
+
+
+
+
+
+
+
+
+
+#endif

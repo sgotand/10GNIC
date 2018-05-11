@@ -1,3 +1,5 @@
+#ifndef ADDR__
+#define ADDR__
 #include <sstream>
 #include <iomanip>
 
@@ -63,3 +65,4 @@ class Ip4Addr {
 	uint32_t _low;
 
 };
+#endif

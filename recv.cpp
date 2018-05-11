@@ -4,6 +4,7 @@
 #include<fcntl.h>
 #include<unistd.h>
 #include<sys/mman.h>
+#include<sys/time.h>
 
 #include "pcie_uio/generic.h"
 #include "pcie_uio/pci.h"
@@ -15,14 +16,18 @@
 #include "proto.h"
 #include "debug.h"
 
-void debug() {
+void debug(void* addr) {
+	uint32_t buf32;
+	for(int i=0; i<sizeof(info)/sizeof(Info); i++) {
+		ReadReg(addr, info[i].offset, buf32);
+		printf("0x%08x: % 20s %08X\n", info[i].offset, info[i].str, buf32);
+	}
 }
 int main(void) {
 	// pcie_uio/pci.hで定義
 	DevPci dp;
 	uint16_t buf16;
 	uint32_t buf32;
-	uint64_t buf64;
 
 	// _uiofd,_configfdをオープン
 	dp.Init();
@@ -171,7 +176,7 @@ int main(void) {
 	WriteReg(addr, RegFctrl::kOffset, (uint32_t)(RegFctrl::kFlagMulticastEnable | RegFctrl::kFlagUnicastEnable | RegFctrl::kFlagBroadcastEnable));
 	printf("Page BASE Phys = %016lx, Virt = %p\n", mem.GetPhysPtr(), mem.GetVirtPtr<void>());
 
-	const int descnum = 1 * 8; // 8 entries, must be multiple of 8
+	const int descnum = 500 * 8; // 8 entries, must be multiple of 8
 	WriteReg(addr, RegRdba::Offset(0), mem.GetPhysPtr());
 	WriteReg(addr, RegRdlen::Offset(0), (uint32_t)descnum * 16);
 	WriteReg(addr, RegRdh::Offset(0), (uint32_t)0);
@@ -209,20 +214,36 @@ int main(void) {
 
 	uint8_t *rbuf0 = (uint8_t*)(((size_t)mem.GetVirtPtr<uint8_t>() + descnum * 16 + 2047) / 2048 * 2048);
 	printf("rbuf0 %p\n", rbuf0);
-	for(int i=0; i<sizeof(info)/sizeof(Info); i++) {
-		ReadReg(addr, info[i].offset, buf32);
-		printf("0x%08x: % 20s %08X\n", info[i].offset, info[i].str, buf32);
-	}
+	debug(addr);
 
 	uint32_t lastHead = 0;
+
+	struct timespec start, end;
 	while(true) {
 		uint32_t head;
+
 		ReadReg(addr, RegRdh::Offset(0), head);
-		if(head == lastHead) continue;
-		lastHead = head;
-		WriteReg(addr, RegRdt::Offset(0), (head-1+descnum)%descnum);
+		clock_gettime(CLOCK_REALTIME, &end);
+		double sec = 1.0 * (end.tv_nsec - start.tv_nsec)/1000000000 + (end.tv_sec - start.tv_sec);
+		printf("%.16f\n", sec);
+		start = end;
+		//if(head == lastHead) continue;
 
 		uint32_t latest = (head-1+descnum) % descnum;
+
+		uint32_t received = 0;
+		for(uint32_t i = lastHead; i != head; i++, i %= descnum) {
+			void *desc = mem.GetVirtPtr<void>();
+			received += ((uint64_t*)desc)[i*2+1] & 0xFFFF;
+		}
+		printf("received %d\n", received);
+		printf("Gbps %.8f\n", 8 * received / sec / 1024 / 1024);
+
+		lastHead = head;
+
+		printf("HEAD %08x\n", head);
+#if 0
+
 		printf("HEAD %08x\n", head);
 
 		ReadReg(addr, RegLinks::kOffset, buf32);
@@ -263,7 +284,11 @@ int main(void) {
 			}
 		}
 		puts("===============================================================================");
-		usleep(1000);
+#endif
+
+		WriteReg(addr, RegRdt::Offset(0), latest);
+
+		usleep(10000);
 	}
 
 
