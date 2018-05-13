@@ -8,7 +8,7 @@
 
 #include "pcie_uio/generic.h"
 #include "pcie_uio/pci.h"
-#include "pcie_uio/mem.h"
+#include "pcie_uio/udmabuf.h"
 
 #include "util.h"
 #include "reg.h"
@@ -101,6 +101,7 @@ void initialize(void *addr) {
 	}
 	return;
 }
+
 int main(void) {
 	DevPci dp;
 	uint16_t buf16;
@@ -108,8 +109,8 @@ int main(void) {
 
 	dp.Init();
 
-	Memory mem(2 * 1024 * 1024);
-	memset(mem.GetVirtPtr<void>(), 0, 2 * 1024 * 1024);
+	Udmabuf mem(0);
+	memset(mem.GetVirtPtr<void>(), 0, 1 * 1024 * 1024);
 
 	// enable  Mastering
 	dp.ReadPciReg(dp.kCommandReg, buf16);
@@ -151,7 +152,7 @@ int main(void) {
 	WriteReg(addr, RegFctrl::kOffset, (uint32_t)(RegFctrl::kFlagMulticastEnable | RegFctrl::kFlagUnicastEnable | RegFctrl::kFlagBroadcastEnable));
 	printf("Page BASE Phys = %016lx, Virt = %p\n", mem.GetPhysPtr(), mem.GetVirtPtr<void>());
 
-	const int descnum = 20 * 8; // 80 entries, must be multiple of 8
+	const int descnum = 1 * 8; // 80 entries, must be multiple of 8
 	WriteReg(addr, RegRdba::Offset(0), mem.GetPhysPtr());
 	WriteReg(addr, RegRdlen::Offset(0), (uint32_t)descnum * 16);
 	WriteReg(addr, RegRdh::Offset(0), (uint32_t)0);
@@ -204,14 +205,12 @@ int main(void) {
 		uint32_t head;
 
 		ReadReg(addr, RegRdh::Offset(0), head);
-		//if(head == lastHead) continue;
 
 		uint32_t latest = (head-1+descnum) % descnum;
 
 		for(uint32_t i = lastHead; i != head; i++, i %= descnum) { void *desc = mem.GetVirtPtr<void>();
 			received += ((uint64_t*)desc)[i*2+1] & 0xFFFF;
 		}
-
 		lastHead = head;
 
 #if 0
@@ -259,7 +258,7 @@ int main(void) {
 
 		WriteReg(addr, RegRdt::Offset(0), latest);
 
-		usleep(1);
+		//usleep(1);
 	}
 
 

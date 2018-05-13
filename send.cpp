@@ -7,7 +7,7 @@
 
 #include "pcie_uio/generic.h"
 #include "pcie_uio/pci.h"
-#include "pcie_uio/mem.h"
+#include "pcie_uio/udmabuf.h"
 
 #include "reg.h"
 #include "addr.h"
@@ -45,9 +45,9 @@ int main(void) {
 
 //map dgeneral control registers
 	// pcie_uio/mem.hで定義
-	Memory mem(2 * 1024 * 1024);
+	Udmabuf mem(1);
 
-	memset(mem.GetVirtPtr<void>(), 0, 2 * 1024 * 1024);
+	memset(mem.GetVirtPtr<void>(), 0, 1 * 1024 * 1024);
 
 	//map bar0 registers
 	int fd = open("/sys/class/uio/uio0/device/resource0", O_RDWR);
@@ -242,7 +242,7 @@ int main(void) {
 
 	//memset(databuf,0xFF,1024);
 	
-	char tmp[] = 	"\xff\xff\xff\xff\xff\xff\x12\x34\x56\x78\x9A\xBC\x08\x06\x00\x01\x08\x00\x06\x04\x00\x01\xfe\x80\x9F\xF2\xE4\x19\x01\x02\x04\x04\xFF\xFF\xFF\xFF\xFF\xFF\x01\x02\x03\x06";
+	char tmp[] = 	"HOGEHOGEHOGEHOGHEOHGOEHGOEHOGHEO";
 
 	/*
 	char tmp[] = 	"\xFF\xFF\xFF\xFF\xFF\xFF"\ 
@@ -256,7 +256,7 @@ int main(void) {
 	"\xfe\x80\x9F\xF2\xE4\x19"\
 	"\x01\x02\x04\x04"\
 	"\xFF\xFF\xFF\xFF\xFF\xFF"\
-	"\x01\x02\x03\x06";
+	"\xDE\xED\xBE\xEF";
 	*/
 	memcpy((void *)databuf,tmp,42);
 

@@ -1,4 +1,0 @@
-TARGET_KEYWORD=10G
-OBJS=recv.o
-
-include pcie_uio/common.mk
