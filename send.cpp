@@ -221,24 +221,32 @@ int main(void) {
 	//同じデータを送り続ける。
 	//const int rbufsz = 2 * 1024;
 	const int rbufsz = 256;
-	size_t rbufbase = (mem.GetPhysPtr() + descnum * 16 + 2047);
+	printf("phys %16lx\n",mem.GetPhysPtr());
+	printf("virt %p\n",mem.GetVirtPtr<uint8_t>());
+
+	size_t bufbase = (mem.GetPhysPtr() + descnum * 16 + 2047) / 2048 * 2048;
+	uint64_t  databuf = ((uint64_t) mem.GetVirtPtr<uint8_t>() + descnum * 16 + 2047 ) /2048 * 2048;
+	printf("bufbase %p\n",(void*)bufbase);
+	printf("databuf %p\n",(void*)databuf);
 	for(int i=0; i<descnum; i++) {
 	 	uint64_t *desc = &mem.GetVirtPtr<uint64_t>()[i * 2];
-	 	size_t buf = rbufbase ; //+ i * rbufsz;
-	 	
+	 	size_t buf = bufbase ; //+ i * rbufsz;	
 		desc[0] = buf;
 	 	desc[1] |= 1<<24; //set End of packet 
 		desc[1] |= 42;
-		printf("RDesc[%d](%p) = %p\n", i, desc, (void*)buf);
+		printf("RDesc[%d](%p) = %p\n", i,(void*)desc, (void*)buf);
+		printf("RDesc[%d](%p) = %llx\n",i,(void *) &desc[1] ,desc[1]);
 	
 	}
-	uint8_t *databuf = (mem.GetVirtPtr<uint8_t>() + descnum * 16 + 2047);
-
+	//databuf = databuf /2048*2048;
 
 	//memset(databuf,0xFF,1024);
 	
-	char tmp[] = 	"\xFF\xFF\xFF\xFF\xFF\xFF" \ 
-			"\x12\x34\x56\x78\x9A\xBC" \ 
+	char tmp[] = 	"\xff\xff\xff\xff\xff\xff\x12\x34\x56\x78\x9A\xBC\x08\x06\x00\x01\x08\x00\x06\x04\x00\x01\xfe\x80\x9F\xF2\xE4\x19\x01\x02\x04\x04\xFF\xFF\xFF\xFF\xFF\xFF\x01\x02\x03\x06";
+
+	/*
+	char tmp[] = 	"\xFF\xFF\xFF\xFF\xFF\xFF"\ 
+			"\x12\x34\x56\x78\x9A\xBC"\ 
 	"\x08\x06"\
 	"\x00\x01"\
 	"\x08\x00"\
@@ -246,10 +254,11 @@ int main(void) {
 	"\x04"\    
 	"\x00\x01"\
 	"\xfe\x80\x9F\xF2\xE4\x19"\
-	"\x00\x00\x00\x01" \
-	"\xFF\xFF\xFF\xFF\xFF\xFF" \
+	"\x01\x02\x04\x04"\
+	"\xFF\xFF\xFF\xFF\xFF\xFF"\
 	"\x01\x02\x03\x06";
-	memcpy(databuf,tmp,sizeof(tmp));
+	*/
+	memcpy((void *)databuf,tmp,42);
 
 
 	//buf32 = rbufsz / 1024;
@@ -267,7 +276,7 @@ int main(void) {
 	// WriteReg(addr, RegRxctrl::kOffset, RegRxctrl::kFlagEnable);
 
 	// enable **all** interrupts
-	 WriteReg(addr, RegTdt::Offset(0), (uint32_t)1);
+	// WriteReg(addr, RegTdt::Offset(0), (uint32_t)1);
 	sleep(1);
 	 ReadReg(addr, RegTdh::Offset(0),buf32);
 	printf("head %08x\n",buf32);
@@ -282,8 +291,19 @@ int main(void) {
 	 WriteReg(addr, RegEims::kOffset, buf32);
 	 sleep(1);
 
-	 WriteReg(addr, RegTdt::Offset(0), (uint32_t)3);
-	sleep(1);
+	 WriteReg(addr, RegTdt::Offset(0), (uint32_t)1);
+	sleep(3);
+	 ReadReg(addr, RegTdh::Offset(0),buf32);
+	printf("head %08x\n",buf32);
+
+	uint64_t *desc = &mem.GetVirtPtr<uint64_t>()[0 * 2];
+	uint64_t tmp64 = desc[1];
+	printf("%16llx\n",tmp64);
+	for(int i = 63;i>=0;i--){
+		if(tmp64 & (1ll<<i))putchar('1');else putchar('0');
+
+	}
+	putchar('\n');
 
 	 ReadReg(addr, RegTdh::Offset(0),buf32);
 	printf("head %08x\n",buf32);

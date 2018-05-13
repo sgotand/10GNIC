@@ -294,33 +294,17 @@ struct Reg { };
 	void WriteReg(void *addr, uint32_t off, uint8_t val) {
 		puts("WriteReg 8bit");
 		((uint8_t *)addr)[off] = val;
-		__asm__ volatile("":::"memory");
-		uint8_t t;
-		ReadReg(addr, off, t);
-		printf("addr:%08x off:%08x value:%02x\n", off, val, t);
 	}
 	void WriteReg(void *addr, uint32_t off, uint16_t val) {
 		puts("WriteReg 16bits");
 		((uint16_t *)addr)[off/2] = val;
-		__asm__ volatile("":::"memory");
-		uint16_t t;
-		ReadReg(addr, off, t);
-		printf("addr:%08x off:%08x value:%04x\n", off, val, t);
 	}
 	void WriteReg(void *addr, uint32_t off, uint32_t val) {
 		((uint32_t *)addr)[off/4] = val;
-		__asm__ volatile("":::"memory");
-		uint32_t t;
-		ReadReg(addr, off, t);
-		printf("addr:%08x off:%08x value:%08x\n", off, val, t);
 	}
 	void WriteReg(void *addr, uint32_t off, uint64_t val) {
 		WriteReg(addr, off, (uint32_t)(val & 0xFFFFFFFF));
 		WriteReg(addr, off+4, (uint32_t)(val >> 32));
-		__asm__ volatile("":::"memory");
-		uint64_t t;
-		ReadReg(addr, off, t);
-		printf("64 %08x %016lx %016lx\n", off, val, t);
 	}
 
 #endif
