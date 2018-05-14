@@ -1,5 +1,4 @@
-#ifndef REG__
-#define REG__
+#pragma once
 
 #include<cstdint>
 #include<cassert>
@@ -306,5 +305,3 @@ struct Reg { };
 		WriteReg(addr, off, (uint32_t)(val & 0xFFFFFFFF));
 		WriteReg(addr, off+4, (uint32_t)(val >> 32));
 	}
-
-#endif

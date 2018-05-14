@@ -1,6 +1,4 @@
-
-#ifndef DEVICE__
-#define DEVICE__
+#pragma once
 
 #include<assert.h>
 #include<stdint.h>
@@ -318,13 +316,3 @@ void DevNic::Init(){
 	
 };
 
-
-
-
-
-
-
-
-
-
-#endif

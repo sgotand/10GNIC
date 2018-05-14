@@ -26,82 +26,6 @@ void debug(void* addr) {
 	}
 }
 
-void initialize(void *addr) {
-	uint32_t buf32;
-
-	//Initialization Sequence
-	puts("Initialize");
-
-	// disable interrupts
-	buf32 = 0x7FFFFFFF; //set bits [30:0] , bits 31 is reserved
-	WriteReg(addr, RegEimc::kOffset, buf32);
-
-	// read Status Reg
-	ReadReg(addr, RegStatus::kOffset, buf32);
-	printf("Status: %08x\n", buf32);
-
-	// global reset (see 4.6.3.2)
-	ReadReg(addr, RegCtrl::kOffset, buf32);
-	buf32 |= RegCtrl::kFlagDeviceReset;
-	WriteReg(addr, RegCtrl::kOffset, buf32);
-	while(true) {
-		ReadReg(addr, RegCtrl::kOffset,buf32);
-		if(!(buf32 & RegCtrl::kFlagDeviceReset)) break;
-		usleep(1000);
-	};
-	usleep(1000);
-
-	// setting flow control (as is not enabled)
-	// FIXME hoge
-	for(int i=0x3200; i<=0x32a0; i+=0x4) {
-		((uint32_t*)addr)[i/4] = 0;
-	}
-	((uint32_t*)addr)[0x3d00/4] = 0;
-	for(int i=0x3260; i<0x32a0; i+=0x4) {
-		((uint32_t*)addr)[i/4] = 1<<10;
-	}
-
-	// link reset
-	ReadReg(addr, RegCtrl::kOffset, buf32);
-	buf32 |= RegCtrl::kFlagLinkReset;
-	WriteReg(addr, RegCtrl::kOffset, buf32);
-
-	// disable interrupt
-	buf32 = 0x7FFFFFFF;
-	WriteReg(addr, RegEimc::kOffset, buf32);
-
-
-	((uint32_t*)addr)[0x38/4] &= ~(1 << 3); /////          LPLU!!!!!!!!!!!!!
-
-	// Wait for the NVM auto-read completion.
-	while(true) {
-		ReadReg(addr,RegEec::kOffset,buf32);
-		if(buf32 & RegEec::kFlagAutoRd) break;
-		usleep(1000); //for mitigating busy wait
-	}
-
-	usleep(1000);
-
-	while(1){
-		ReadReg(addr,RegRdrxctl::kOffset,buf32);
-		if(buf32 & RegRdrxctl::kFlagDmaidone) break;
-		usleep(1000); //for mitigating busy wait
-	}
-
-
-	{
-		// read EEMNGCTL (Manageability EEPROM Mode Control Register)
-		buf32 = ((uint32_t*)addr)[0x0000/4];
-		printf("CTRL: %08x\n", buf32);
-		buf32 = ((uint32_t*)addr)[0x10110/4];
-		printf("EEMNGCTL: %08x\n", buf32);
-		buf32 = ((uint32_t*)addr)[0x2f00/4];
-		printf("RDRXCTL: %08x\n", buf32);
-		sleep(1);
-	}
-	return;
-}
-
 int main(void) {
 	DevPci dp;
 	uint16_t buf16;
@@ -135,7 +59,8 @@ int main(void) {
 	close(fd);
 
 #if 1
-	initialize(addr);
+	void initialize_hardware(void *addr);
+	initialize_hardware(addr);
 #endif
 
 	puts("Receive Addresses (only 8)");
@@ -152,7 +77,7 @@ int main(void) {
 	WriteReg(addr, RegFctrl::kOffset, (uint32_t)(RegFctrl::kFlagMulticastEnable | RegFctrl::kFlagUnicastEnable | RegFctrl::kFlagBroadcastEnable));
 	printf("Page BASE Phys = %016lx, Virt = %p\n", mem.GetPhysPtr(), mem.GetVirtPtr<void>());
 
-	const int descnum = 1 * 8; // 80 entries, must be multiple of 8
+	const int descnum = 1 * 8; // 8 entries, must be multiple of 8
 	WriteReg(addr, RegRdba::Offset(0), mem.GetPhysPtr());
 	WriteReg(addr, RegRdlen::Offset(0), (uint32_t)descnum * 16);
 	WriteReg(addr, RegRdh::Offset(0), (uint32_t)0);
@@ -169,7 +94,7 @@ int main(void) {
 	}
 
 	buf32 = rbufsz / 1024;
-	WriteReg(addr, RegSrrctl::Offset(0), (uint32_t)0x2);
+	WriteReg(addr, RegSrrctl::Offset(0), buf32);
 	WriteReg(addr, RegRscctl::Offset(0), (uint32_t)0);
 	WriteReg(addr, RegRxdctl::Offset(0), RegRxdctl::kFlagReceiveQueueEnable);
 
@@ -189,10 +114,9 @@ int main(void) {
 	sleep(1);
 
 	uint8_t *rbuf0 = (uint8_t*)(((size_t)mem.GetVirtPtr<uint8_t>() + descnum * 16 + 2047) / 2048 * 2048);
-	printf("rbuf0 %p\n", rbuf0);
 
 	size_t received = 0;
-#if 1
+#if 0
 	pthread_t thread;
 	if(pthread_create(&thread, NULL, (void*(*)(void*))bandwidth, &received)) {
 		puts("pthread_create error");
@@ -208,7 +132,9 @@ int main(void) {
 
 		uint32_t latest = (head-1+descnum) % descnum;
 
-		for(uint32_t i = lastHead; i != head; i++, i %= descnum) { void *desc = mem.GetVirtPtr<void>();
+		void *desc = mem.GetVirtPtr<void>();
+		for(uint32_t i = lastHead; i != head; i++, i %= descnum) {
+			EtherReader er(rbuf0+i*2048);
 			received += ((uint64_t*)desc)[i*2+1] & 0xFFFF;
 		}
 		lastHead = head;
@@ -252,15 +178,27 @@ int main(void) {
 								);
 					}
 			}
+				case EtherReader::ARP:
+				       	{
+						ArpReader ar(er.Data());
+						puts(" ARP");
+						printf("  Src: %s %s\n",
+							       	ar.HwSrc().FormatAddr().c_str(),
+							       	ar.IpSrc().Format().c_str()
+								);
+						printf("  Dst: %s %s\n",
+							       	ar.HwDst().FormatAddr().c_str(),
+							       	ar.IpDst().Format().c_str()
+								);
+					}
 		}
 		puts("===============================================================================");
+		usleep(1000000);
 #endif
 
 		WriteReg(addr, RegRdt::Offset(0), latest);
 
-		//usleep(1);
 	}
-
 
 	return 0;
 }

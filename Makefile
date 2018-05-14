@@ -22,7 +22,7 @@ run_recv: recv init
 send: send.o
 	g++ $(CXXFLAGS) -o $@ $^
 
-recv: recv.o
+recv: recv.o init.o
 	g++ $(CXXFLAGS) -o $@ $^
 
 init:

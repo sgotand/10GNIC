@@ -242,7 +242,7 @@ int main(void) {
 
 	//memset(databuf,0xFF,1024);
 	
-	char tmp[] = 	"HOGEHOGEHOGEHOGHEOHGOEHGOEHOGHEO";
+	char tmp[] = 	"HOGEHOGEHOGEHOGHEOHGOEHGOEHOGHEOjfoisajtwe n aeirnycigsrnisprcntewyiryg peweiuynsvr gpinwnpiuynatrieuoncryapwioueycnipwueiacrpniewvpiewanpyg iweuayprpv ap";
 
 	/*
 	char tmp[] = 	"\xFF\xFF\xFF\xFF\xFF\xFF"\ 
