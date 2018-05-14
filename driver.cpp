@@ -81,6 +81,7 @@ int main(void) {
 	WriteReg(regspace, RegEims::kOffset, buf32);
 	sleep(1);
 
+    // FIXME ReceiveQueueをクラスにするかなんかどうにかして、こことinitialize_receive_queueの中の計算をまとめたい。
 	uint8_t *rbuf0 = (uint8_t*)(((size_t)physmem.GetVirtPtr<uint8_t>() + rdescnum * 16 + 1024 - 1) & ~(1024-1));
 
 	size_t received = 0;
