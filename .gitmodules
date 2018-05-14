@@ -1,3 +1,6 @@
 [submodule "pcie_uio"]
 	path = pcie_uio
 	url = git://github.com/cookie-s/pcie_uio
+[submodule "udmabuf"]
+	path = udmabuf
+	url = git://github.com/ikwzm/udmabuf
