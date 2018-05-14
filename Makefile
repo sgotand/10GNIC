@@ -1,17 +1,17 @@
-TARGET_KEYWORD=10G
-TARGET_DEFAULT_DRIVER=ixgbe
+TARGET_KEYWORD := 10G
+TARGET_DEFAULT_DRIVER := ixgbe
 
-DEPS= $(filter %.d, $(subst .o,.d, $(OBJS)))
-CXXFLAGS += -g -std=c++14 -MMD -MP -Wall -Wpedantic -pthread -I./pcie_uio
+DEPS := $(filter %.d, $(subst .o,.d, $(OBJS)))
+CXXFLAGS := -g -std=c++14 -MMD -MP -Wall -Wpedantic -pthread -I./pcie_uio
 
-all: send recv
+all: driver
 
 -include $(DEPS)
 include pcie_uio/common.mk
 
 
 clean:
-	rm -f send recv
+	rm -f send recv *.o *.d
 
 run_send: send init
 	sudo ./send
@@ -19,10 +19,16 @@ run_send: send init
 run_recv: recv init
 	sudo ./recv
 
-send: send.o
+run_driver: driver init
+	sudo ./driver
+
+send: send.o reg.o
 	g++ $(CXXFLAGS) -o $@ $^
 
-recv: recv.o init.o
+recv: init.o recv.o reg.o
+	g++ $(CXXFLAGS) -o $@ $^
+
+driver: init.o driver.o reg.o
 	g++ $(CXXFLAGS) -o $@ $^
 
 init:

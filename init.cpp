@@ -1,10 +1,28 @@
 #include <stdint.h>
 #include <unistd.h>
+#include <assert.h>
+
+#include "pcie_uio/udmabuf.h"
+#include "pcie_uio/pci.h"
 
 #include "util.h"
 #include "reg.h"
 #include "addr.h"
 #include "proto.h"
+
+void initialize_pci(DevPci &dp) {
+	uint32_t buf32;
+	uint16_t buf16;
+
+	// enable  Mastering
+	dp.ReadPciReg(dp.kCommandReg, buf16);
+	buf16 |= dp.kCommandRegBusMasterEnableFlag;
+	dp.WritePciReg(dp.kCommandReg, buf16);
+
+	// BAR0
+	buf32 = 0x0000000c;
+	dp.WritePciReg(dp.kBaseAddressReg0, buf32);
+}
 
 void initialize_hardware(void *addr) {
 	uint32_t buf32;
@@ -78,4 +96,39 @@ void initialize_hardware(void *addr) {
 		sleep(1);
 	}
 	return;
+}
+
+void *initialize_receive_queue(void *regspace, Udmabuf &physmem, size_t descnum, size_t bufsz) {
+    uint32_t buf32;
+
+    assert(descnum % 8 == 0);
+    assert(bufsz % 1024 == 0);
+
+	WriteReg(regspace, RegRdba::Offset(0), physmem.GetPhysPtr());
+	WriteReg(regspace, RegRdlen::Offset(0), (uint32_t)descnum * 16);
+	WriteReg(regspace, RegRdh::Offset(0), (uint32_t)0);
+	WriteReg(regspace, RegRdt::Offset(0), (uint32_t)0);
+
+	size_t rbufbase = (physmem.GetPhysPtr() + descnum * 16 + 1024 - 1) & ~(1024-1);
+
+	for(int i=0; i<descnum; i++) {
+		uint64_t *desc = &physmem.GetVirtPtr<uint64_t>()[i * 2];
+		size_t buf = rbufbase + i * bufsz;
+		desc[0] = buf;
+	}
+
+	buf32 = bufsz / 1024;
+	WriteReg(regspace, RegSrrctl::Offset(0), buf32);
+	WriteReg(regspace, RegRscctl::Offset(0), (uint32_t)0);
+	WriteReg(regspace, RegRxdctl::Offset(0), RegRxdctl::kFlagReceiveQueueEnable);
+
+	while(true) {
+		ReadReg(regspace, RegRxdctl::Offset(0), buf32);
+		if(buf32 & RegRxdctl::kFlagReceiveQueueEnable)
+			break;
+		__asm__ volatile("" ::: "memory");
+	}
+	WriteReg(regspace, RegRxctrl::kOffset, RegRxctrl::kFlagEnable);
+
+    return (void*)((((size_t)physmem.GetVirtPtr<uint8_t>() + descnum * 16 + 1024 - 1) & ~(1024-1)) + descnum * bufsz);
 }
