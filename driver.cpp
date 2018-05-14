@@ -1,10 +1,7 @@
-#include<assert.h>
-#include<stdint.h>
-#include<string.h>
-#include<fcntl.h>
-#include<unistd.h>
-#include<sys/mman.h>
-#include<sys/time.h>
+#include <stdint.h>
+#include <string.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 #include "pcie_uio/generic.h"
 #include "pcie_uio/pci.h"
@@ -14,7 +11,6 @@
 #include "reg.h"
 #include "addr.h"
 #include "proto.h"
-#include "debug.h"
 #include "init.h"
 
 void bandwidth(size_t *readsize);
@@ -85,7 +81,7 @@ int main(void) {
     uint8_t *rbuf0 = (uint8_t*)(((size_t)physmem.GetVirtPtr<uint8_t>() + rdescnum * 16 + 1024 - 1) & ~(1024-1));
 
     size_t received = 0;
-#if 0
+#if 1
     pthread_t thread;
     if(pthread_create(&thread, NULL, (void*(*)(void*))bandwidth, &received)) {
         puts("pthread_create error");
@@ -108,7 +104,7 @@ int main(void) {
         }
         lastHead = head;
 
-#if 0
+#if 1
         printf("HEAD %08x\n", head);
 
         ReadReg(regspace, RegLinks::kOffset, buf32);
@@ -146,19 +142,6 @@ int main(void) {
                                 ar.IpDst().Format().c_str()
                               );
                     }
-            }
-            case EtherReader::ARP:
-            {
-                ArpReader ar(er.Data());
-                puts(" ARP");
-                printf("  Src: %s %s\n",
-                        ar.HwSrc().FormatAddr().c_str(),
-                        ar.IpSrc().Format().c_str()
-                      );
-                printf("  Dst: %s %s\n",
-                        ar.HwDst().FormatAddr().c_str(),
-                        ar.IpDst().Format().c_str()
-                      );
             }
         }
         puts("===============================================================================");
