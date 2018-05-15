@@ -9,6 +9,7 @@
 #include "reg.h"
 #include "addr.h"
 #include "proto.h"
+#include "queue.h"
 
 void initialize_pci(DevPci &dp) {
     uint32_t buf32;
@@ -98,9 +99,10 @@ void initialize_hardware(void *addr) {
     return;
 }
 
-void *initialize_receive_queue(void *regspace, Udmabuf &physmem, size_t descnum, size_t bufsz) {
+ReceiveQueue* initialize_receive(void *regspace, phys_addr physbase, void *virtbase, size_t descnum, size_t bufsz) {
     uint32_t buf32;
 
+    assert((physbase & ~(1024-1)) == 0);
     assert(descnum % 8 == 0);
     assert(bufsz % 1024 == 0);
 
@@ -110,18 +112,12 @@ void *initialize_receive_queue(void *regspace, Udmabuf &physmem, size_t descnum,
     buf32 |= RegFctrl::kFlagBroadcastEnable;
     WriteReg(regspace, RegFctrl::kOffset, buf32);
 
-    WriteReg(regspace, RegRdba::Offset(0), physmem.GetPhysPtr());
+    WriteReg(regspace, RegRdba::Offset(0), physbase);
     WriteReg(regspace, RegRdlen::Offset(0), (uint32_t)descnum * 16);
     WriteReg(regspace, RegRdh::Offset(0), (uint32_t)0);
     WriteReg(regspace, RegRdt::Offset(0), (uint32_t)0);
 
-    size_t rbufbase = (physmem.GetPhysPtr() + descnum * 16 + 1024 - 1) & ~(1024-1);
-
-    for(int i=0; i<descnum; i++) {
-        uint64_t *desc = &physmem.GetVirtPtr<uint64_t>()[i * 2];
-        size_t buf = rbufbase + i * bufsz;
-        desc[0] = buf;
-    }
+    ReceiveQueue *rq = new ReceiveQueue(descnum, bufsz, physbase, virtbase);
 
     buf32 = bufsz / 1024;
     WriteReg(regspace, RegSrrctl::Offset(0), buf32);
@@ -136,5 +132,30 @@ void *initialize_receive_queue(void *regspace, Udmabuf &physmem, size_t descnum,
     }
     WriteReg(regspace, RegRxctrl::kOffset, RegRxctrl::kFlagEnable);
 
-    return (void*)((((size_t)physmem.GetVirtPtr<uint8_t>() + descnum * 16 + 1024 - 1) & ~(1024-1)) + descnum * bufsz);
+    return rq;
+}
+
+TransmitQueue* initialize_transmit(void *regspace, phys_addr physbase, void *virtbase, size_t descnum , size_t bufsz) {
+    uint32_t buf32;
+
+    assert((physbase & ~(1024-1)) == 0);
+    assert(descnum % 8 == 0);
+
+    ReadReg(regspace, RegDmatxctl::kOffset, buf32);
+    assert(!(buf32 & RegDmatxctl::kFlagTransmitEnable));
+    buf32 &= ~RegDmatxctl::kFlagTransmitEnable;
+    WriteReg(regspace, RegDmatxctl::kOffset, buf32);
+
+    WriteReg(regspace, RegTdba::Offset(0), physbase);
+    WriteReg(regspace, RegTdlen::Offset(0), (uint32_t)descnum * 16);
+    WriteReg(regspace, RegTdh::Offset(0), (uint32_t)0);
+    WriteReg(regspace, RegTdt::Offset(0), (uint32_t)0);
+
+    TransmitQueue *tq = new TransmitQueue(descnum, physbase, virtbase);
+
+    ReadReg(regspace, RegDmatxctl::kOffset, buf32);
+    buf32 |= RegDmatxctl::kFlagTransmitEnable;
+    WriteReg(regspace, RegDmatxctl::kOffset, buf32);
+
+    return tq;
 }

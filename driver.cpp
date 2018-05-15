@@ -59,7 +59,7 @@ int main(void) {
 
     const int rdescnum = 1 * 8; // must be multiple of 8
     const int rbufsz = 2 * 1024; // must be multiple of 1024
-    void *free_top = initialize_receive_queue(regspace, physmem, rdescnum, rbufsz);
+    initialize_receive(regspace, physmem.GetPhysPtr(), physmem.GetVirtPtr<void>(), rdescnum, rbufsz);
 
     WriteReg(regspace, RegRdt::Offset(0), (uint32_t)rdescnum-1);
 

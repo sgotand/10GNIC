@@ -11,7 +11,7 @@ include pcie_uio/common.mk
 
 
 clean:
-	rm -f send recv *.o *.d
+	rm -f driver send recv *.o *.d
 
 run_send: send init
 	sudo ./send
