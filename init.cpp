@@ -104,6 +104,12 @@ void *initialize_receive_queue(void *regspace, Udmabuf &physmem, size_t descnum,
     assert(descnum % 8 == 0);
     assert(bufsz % 1024 == 0);
 
+    buf32  = 0;
+    buf32 |= RegFctrl::kFlagMulticastEnable;
+    buf32 |= RegFctrl::kFlagUnicastEnable;
+    buf32 |= RegFctrl::kFlagBroadcastEnable;
+    WriteReg(regspace, RegFctrl::kOffset, buf32);
+
     WriteReg(regspace, RegRdba::Offset(0), physmem.GetPhysPtr());
     WriteReg(regspace, RegRdlen::Offset(0), (uint32_t)descnum * 16);
     WriteReg(regspace, RegRdh::Offset(0), (uint32_t)0);

@@ -22,7 +22,7 @@ int main(void) {
     dp.Init();
 
     Udmabuf physmem(0);
-    memset(physmem.GetVirtPtr<void>(), 0, 1 * 1024 * 1024);
+    memset(physmem.GetVirtPtr<void>(), 0, physmem.GetSize());
 
     printf("Page BASE Phys = %016lx, Virt = %016lx\n",
             physmem.GetPhysPtr(),
@@ -57,14 +57,6 @@ int main(void) {
         printf("% 3d: %d %s\n", i, ad.Valid(), ad.FormatAddr().c_str());
     }
 
-
-    buf32  = 0;
-    buf32 |= RegFctrl::kFlagMulticastEnable;
-    buf32 |= RegFctrl::kFlagUnicastEnable;
-    buf32 |= RegFctrl::kFlagBroadcastEnable;
-    WriteReg(regspace, RegFctrl::kOffset, buf32);
-
-
     const int rdescnum = 1 * 8; // must be multiple of 8
     const int rbufsz = 2 * 1024; // must be multiple of 1024
     void *free_top = initialize_receive_queue(regspace, physmem, rdescnum, rbufsz);
@@ -81,7 +73,7 @@ int main(void) {
     uint8_t *rbuf0 = (uint8_t*)(((size_t)physmem.GetVirtPtr<uint8_t>() + rdescnum * 16 + 1024 - 1) & ~(1024-1));
 
     size_t received = 0;
-#if 1
+#if 0
     pthread_t thread;
     if(pthread_create(&thread, NULL, (void*(*)(void*))bandwidth, &received)) {
         puts("pthread_create error");
@@ -104,7 +96,7 @@ int main(void) {
         }
         lastHead = head;
 
-#if 1
+#if 0
         printf("HEAD %08x\n", head);
 
         ReadReg(regspace, RegLinks::kOffset, buf32);
