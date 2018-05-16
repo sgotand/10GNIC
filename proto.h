@@ -2,6 +2,8 @@
 
 #include<stdlib.h>
 #include<sstream>
+#include <net/ethernet.h>
+//できれば net/ethernet.h をできるだけ使いたい...
 
 class EtherReader {
 	public:
@@ -34,9 +36,11 @@ class EtherReader {
 			const size_t typeOffset = 0xc;
 			const uint16_t type = *(const uint16_t*)(_buf+typeOffset);
 			switch(ntohs(type)) {
-				case 0x0800:
+				//case 0x0800:
+				case ETHERTYPE_IP:	
 					return IPv4;
-				case 0x0806:
+				//case 0x0806:
+				case ETHERTYPE_ARP:
 					return ARP;
 				default:
 					return Unknown;
