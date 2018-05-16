@@ -44,7 +44,7 @@ void WriteReg(void *addr, uint32_t off, uint64_t val) {
 
 
 
-void *Reg::base_addr ;
+void *Reg::base_addr = NULL;
 void RegCtrl::show(){
     uint32_t t;
     if(base_addr == NULL){

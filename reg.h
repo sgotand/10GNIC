@@ -12,7 +12,6 @@ struct Reg{
         std::cerr << "To be defined" <<std::endl;
     };
 };
-//void  *Reg::base_addr = NULL;
 
 // General Control Registers (see p.483)
 struct RegCtrl :public Reg {

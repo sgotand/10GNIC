@@ -126,20 +126,25 @@ int main(void) {
 
     uint32_t lastHead = 0;
     while(true) {
+    
         uint32_t head;
 
         ReadReg(addr, RegRdh::Offset(0), head);
-
+	printf("head:%d\n",head);
         uint32_t latest = (head-1+descnum) % descnum;
 
         void *desc = mem.GetVirtPtr<void>();
         for(uint32_t i = lastHead; i != head; i++, i %= descnum) {
             EtherReader er(rbuf0+i*2048);
             received += ((uint64_t*)desc)[i*2+1] & 0xFFFF;
-        }
+            printf("i: %d len:%d",i,((uint64_t*)desc)[i*2+1] & 0xFFFF);
+            
+
+	}
         lastHead = head;
 
-#if 0
+
+#if 1
         printf("HEAD %08x\n", head);
 
         ReadReg(addr, RegLinks::kOffset, buf32);
@@ -177,20 +182,7 @@ int main(void) {
                                 ar.IpDst().Format().c_str()
                               );
                     }
-            }
-            case EtherReader::ARP:
-            {
-                ArpReader ar(er.Data());
-                puts(" ARP");
-                printf("  Src: %s %s\n",
-                        ar.HwSrc().FormatAddr().c_str(),
-                        ar.IpSrc().Format().c_str()
-                      );
-                printf("  Dst: %s %s\n",
-                        ar.HwDst().FormatAddr().c_str(),
-                        ar.IpDst().Format().c_str()
-                      );
-            }
+	    }
         }
         puts("===============================================================================");
         usleep(1000000);

@@ -23,6 +23,8 @@ run_driver: driver init
 	sudo ./driver
 run_arp: arp init
 	sudo ./arp
+run_rcv2arp: rcv2arp init
+	sudo ./rcv2arp
 
 send: send.o reg.o
 	g++ $(CXXFLAGS) -o $@ $^
@@ -34,6 +36,9 @@ driver: init.o driver.o reg.o
 	g++ $(CXXFLAGS) -o $@ $^
 
 arp: init.o arp.o reg.o
+	g++ $(CXXFLAGS) -o $@ $^
+
+rcv2arp: init.o rcv2arp.o reg.o
 	g++ $(CXXFLAGS) -o $@ $^
 init:
 	sudo rmmod udmabuf || true
