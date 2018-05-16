@@ -3,19 +3,28 @@
 #include<cstdint>
 #include<cassert>
 #include<cstdio>
+#include<iostream>
 
-struct Reg { };
+struct Reg{
+    static void * base_addr;
+    public:
+    static void show(){
+        std::cerr << "To be defined" <<std::endl;
+    };
+};
+void  *Reg::base_addr = NULL;
 
 // General Control Registers (see p.483)
-struct RegCtrl : Reg {
+struct RegCtrl :public Reg {
     static const uint32_t kOffset     = 0x00000000;
-
     static const uint32_t kFlagLinkReset   = 1<< 3;
     static const uint32_t kFlagDeviceReset = 1<<26;
+    static void show();
 };
 
-struct RegStatus {
+struct RegStatus :public Reg{
     static const uint32_t kOffset     = 0x00000008;
+    static void show();
 };
 
 // CTRL_EXT
@@ -35,16 +44,18 @@ struct RegStatus {
 // I2CPARAMS
 
 // NVM Registers (see p.483)
-struct RegEec {
+struct RegEec :public Reg{
     static const uint32_t kOffset 		= 0x00010010;
     static const uint32_t kFlagAutoRd	= 1 << 9;
+    static void show();
 };
 
 // FLA
-struct RegEemngctl {
+struct RegEemngctl :public Reg{
     static const uint32_t kOffset 		= 0x00010110;
     static const uint32_t kFlagCfgDone0 = 1<<18;
     static const uint32_t kFlagCfgDone1 = 1<<19;
+    static void show();
 };
 // EEMNGDATA
 // FLMNGDATA
@@ -52,23 +63,26 @@ struct RegEemngctl {
 
 
 // Flow Control Registers
-struct RegFcttvn {
+struct RegFcttvn :public Reg{
     static const uint32_t kOffset 	= 0x00003200;
     static const uint32_t kNlimit	= 4;
+    static void show();
 };
-struct RegFcrtl {
+struct RegFcrtl :public Reg{
     static const uint32_t kOffset 	= 0x00003220;
     static const uint32_t kNlimit 	= 8;
+    static void show();
 };
-struct RegFcrth {
+struct RegFcrth :public Reg{
     static const uint32_t kOffset 	= 0x00003220;
     static const uint32_t kNlimit 	= 8;
+    static void show();
 };
 
 
 
 
-struct RegLinks {
+struct RegLinks :public Reg{
     static const uint32_t kOffset = 0x000042A4;
     static const uint32_t kFlagLinkStatusUp = 1<<7;
     static const uint32_t kOffsetLinkSpeed = 28;
@@ -76,18 +90,19 @@ struct RegLinks {
     static const uint32_t kValueLinkSpeed100M = 0b01 << 28;
     static const uint32_t kValueLinkSpeed1G = 0b10 << 28;
     static const uint32_t kValueLinkSpeed10G = 0b11 << 28;
+    static void show();
 };
-struct RegEims {
+struct RegEims :public Reg{
     static const uint32_t kOffset     = 0x00000880;
 };
-struct RegEimc {
+struct RegEimc :public Reg{
     static const uint32_t kOffset     = 0x00000888;
 };
-struct RegRdrxctl {
+struct RegRdrxctl :public Reg{
     static const uint32_t kOffset     		= 0x00002F00;
     static const uint32_t kFlagDmaidone 	= 1<<3;
 };
-struct RegFctrl {
+struct RegFctrl :public Reg{
     static const uint32_t kOffset     = 0x00005080;
     static const uint32_t kFlagMulticastEnable = 1<<8;
     static const uint32_t kFlagUnicastEnable   = 1<<9;
@@ -96,7 +111,9 @@ struct RegFctrl {
 
 //Reseive Registers
 // Receive Descripter Base address
-struct RegRdba {
+struct RegRdba :public Reg{
+    static const uint32_t kOffset   = 0x00001000;
+    static const uint32_t kNlimit   = 128;
     static uint32_t Offset(size_t idx) {
         // FIXME もっと他と同じ感じで書きたいですねぇ
         if(idx < 64)
@@ -104,7 +121,9 @@ struct RegRdba {
         return 0x0000D000 + 0x40 * (idx - 64);
     }
 };
-struct RegRdlen {
+struct RegRdlen :public Reg{
+    static const uint32_t kOffset   = 0x00001008;
+    static const uint32_t kNlimit   = 128;
     static uint32_t Offset(size_t idx) {
         // FIXME もっと他と同じ感じで書きたいですねぇ
         if(idx < 64)
@@ -112,7 +131,9 @@ struct RegRdlen {
         return 0x0000D008 + 0x40 * (idx - 64);
     }
 };
-struct RegRdh {
+struct RegRdh :public Reg{
+    static const uint32_t kOffset   = 0x00001010;
+    static const uint32_t kNlimit   = 128;
     static uint32_t Offset(size_t idx) {
         // FIXME もっと他と同じ感じで書きたいですねぇ
         if(idx < 64)
@@ -120,7 +141,9 @@ struct RegRdh {
         return 0x0000D010 + 0x40 * (idx - 64);
     }
 };
-struct RegRdt {
+struct RegRdt :public Reg{
+    static const uint32_t kOffset   = 0x00001018;
+    static const uint32_t kNlimit   = 128;
     static uint32_t Offset(size_t idx) {
         // FIXME もっと他と同じ感じで書きたいですねぇ
         if(idx < 64)
@@ -130,13 +153,16 @@ struct RegRdt {
 };
 
 // Receive Address(low,high)
-struct RegRa {
+struct RegRa :public Reg{
+    static const uint32_t kOffset   = 0x0000A200;
+    static const uint32_t kNlimit   = 128;
     static uint32_t Offset(size_t idx) {
         // FIXME もっと他と同じ感じで書きたいですねぇ
         return 0x0000A200 + 0x8 * idx;
     }
+    static void show(int idx);
 };
-struct RegSrrctl {
+struct RegSrrctl :public Reg{
     static uint32_t Offset(size_t idx) {
         // FIXME もっと他と同じ感じで書きたいですねぇ
         if(idx < 64)
@@ -144,7 +170,7 @@ struct RegSrrctl {
         return 0x0000D014 + 0x40 * (idx - 64);
     }
 };
-struct RegRscctl {
+struct RegRscctl :public Reg{
     static uint32_t Offset(size_t idx) {
         // FIXME もっと他と同じ感じで書きたいですねぇ
         if(idx < 64)
@@ -152,7 +178,7 @@ struct RegRscctl {
         return 0x0000D02C + 0x40 * (idx - 64);
     }
 };
-struct RegRxdctl {
+struct RegRxdctl :public Reg{
     static uint32_t Offset(size_t idx) {
         // FIXME もっと他と同じ感じで書きたいですねぇ
         if(idx < 64)
@@ -161,29 +187,29 @@ struct RegRxdctl {
     }
     static const uint32_t kFlagReceiveQueueEnable = 1<<25;
 };
-struct RegRxctrl {
+struct RegRxctrl :public Reg{
     static const uint32_t kOffset = 0x00003000;
     static const uint32_t kFlagEnable = 1<<0;
 };
 
 //Transmit Registers
 
-struct RegDmatxctl {
+struct RegDmatxctl :public Reg{
     static const uint32_t kOffset     = 0x00004A80;
     static const uint32_t kFlagTransmitEnable = 1<<0;
 };
 
-struct RegDtxtcpflgl {
+struct RegDtxtcpflgl :public Reg{
     static const uint32_t kOffset     = 0x00004A88;
 };
 
-struct RegDtxtcpflgh {
+struct RegDtxtcpflgh :public Reg{
     static const uint32_t kOffset     = 0x00004A8C;
 };
 
 
 
-struct RegTdba {
+struct RegTdba :public Reg{
     static uint32_t Offset(size_t idx) {
         // FIXME もっと他と同じ感じで書きたいですねぇ
         assert(128  > idx && idx >= 0);
@@ -191,7 +217,7 @@ struct RegTdba {
     }
 };
 
-struct RegTdlen {
+struct RegTdlen :public Reg{
     static uint32_t Offset(size_t idx) {
         // FIXME もっと他と同じ感じで書きたいですねぇ
         assert(128  > idx && idx >= 0);
@@ -200,7 +226,7 @@ struct RegTdlen {
 };
 
 
-struct RegTdh {
+struct RegTdh :public Reg{
     static uint32_t Offset(size_t idx) {
         // FIXME もっと他と同じ感じで書きたいですねぇ
         assert(128  > idx && idx >= 0);
@@ -208,7 +234,7 @@ struct RegTdh {
     }
 };
 
-struct RegTdt {
+struct RegTdt :public Reg{
     static uint32_t Offset(size_t idx) {
         // FIXME もっと他と同じ感じで書きたいですねぇ
         assert(128  > idx && idx >= 0);
@@ -216,7 +242,7 @@ struct RegTdt {
     }
 };
 
-struct RegTxdctl {
+struct RegTxdctl :public Reg{
     static uint32_t Offset(size_t idx) {
         // FIXME もっと他と同じ感じで書きたいですねぇ
         assert(128  > idx && idx >= 0);
@@ -224,7 +250,7 @@ struct RegTxdctl {
     }
 };
 
-struct RegTdwba {
+struct RegTdwba :public Reg{
     static uint32_t Offset(size_t idx) {
         // FIXME もっと他と同じ感じで書きたいですねぇ
         assert(128  > idx && idx >= 0);
@@ -232,7 +258,7 @@ struct RegTdwba {
     }
 };
 
-struct RegDtxmxszrq {
+struct RegDtxmxszrq :public Reg{
     static uint32_t Offset() {
         // FIXME もっと他と同じ感じで書きたいですねぇ
         return 0x00008100;
@@ -240,14 +266,14 @@ struct RegDtxmxszrq {
 };
 
 
-struct RegMtqc {
+struct RegMtqc :public Reg{
     static uint32_t Offset() {
         // FIXME もっと他と同じ感じで書きたいですねぇ
         return 0x00008120;
     }
 };
 
-struct RegTxpbsize {
+struct RegTxpbsize :public Reg{
     static uint32_t Offset(size_t idx) {
         // FIXME もっと他と同じ感じで書きたいですねぇ
         assert(8  > idx && idx >= 0);
@@ -255,7 +281,7 @@ struct RegTxpbsize {
     }
 };
 
-struct RegMngtxmap {
+struct RegMngtxmap :public Reg{
     static uint32_t Offset() {
         // FIXME もっと他と同じ感じで書きたいですねぇ
         return 0x0000CD10;
@@ -263,7 +289,7 @@ struct RegMngtxmap {
 };
 
 
-struct RegTagetype {
+struct RegTagetype :public Reg{
     static uint32_t Offset() {
         // FIXME もっと他と同じ感じで書きたいですねぇ
         return 0x00017100;
