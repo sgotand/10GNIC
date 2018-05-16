@@ -21,6 +21,8 @@ run_recv: recv init
 
 run_driver: driver init
 	sudo ./driver
+run_arp: arp init
+	sudo ./arp
 
 send: send.o reg.o
 	g++ $(CXXFLAGS) -o $@ $^
@@ -31,6 +33,8 @@ recv: init.o recv.o reg.o
 driver: init.o driver.o reg.o
 	g++ $(CXXFLAGS) -o $@ $^
 
+arp: init.o arp.o reg.o
+	g++ $(CXXFLAGS) -o $@ $^
 init:
 	sudo rmmod udmabuf || true
 	sudo insmod udmabuf/udmabuf.ko udmabuf0=1048576 udmabuf1=1048576 || true
