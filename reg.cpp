@@ -7,7 +7,7 @@
 #include "reg.h"
 #include "addr.h"
 #include "pcie_uio/generic.h"
-
+#include "util.h"
 
 // Read Write Functions
 void ReadReg(void *addr, uint32_t off, uint8_t &val) {
@@ -44,6 +44,7 @@ void WriteReg(void *addr, uint32_t off, uint64_t val) {
 
 
 
+void *Reg::base_addr ;
 void RegCtrl::show(){
     uint32_t t;
     if(base_addr == NULL){
@@ -52,10 +53,10 @@ void RegCtrl::show(){
     }
     ReadReg(base_addr,kOffset,t);
     std::cerr<<"[Info]RegCtrl:"<<std::endl;
-    std::cerr<<"  kOffset   ="<< std::hex<<std::setfill('0') <<kOffset<<std::endl;
+    std::cerr<<"  kOffset   ="<< std::hex<<std::setfill('0')<<std::showbase << std::setw(8)<<kOffset<<std::endl;
     std::cerr<<"  .LRST     ="<< (IsFlagClear(t,kFlagLinkReset) ? '1' : '0') <<std::endl;
     std::cerr<<"  .RST      ="<< (IsFlagSet(t,kFlagDeviceReset) ? '1' : '0')<<std::endl;
-    std::cerr<<"  AllFlags  ="<< std::hex<<std::setfill('0') <<t;
+    std::cerr<<"  AllFlags  ="<< std::hex<<std::setfill('0')<<std::showbase << std::setw(8) <<t << std::endl;
 }
 
 
@@ -69,8 +70,8 @@ void RegStatus::show(){
     }
     ReadReg(base_addr,kOffset,t);
     std::cerr<<"[Info]RegStatu:"<<std::endl;
-    std::cerr<<"  kOffset   ="<< std::hex<<std::setfill('0') <<kOffset<<std::endl;
-    std::cerr<<"  AllFlags  ="<< std::hex<<std::setfill('0') <<t;
+    std::cerr<<"  kOffset   ="<< std::hex<<std::setfill('0')<<std::showbase << std::setw(8) <<kOffset<<std::endl;
+    std::cerr<<"  AllFlags  ="<< std::hex<<std::setfill('0')<<std::showbase << std::setw(8) <<t << std::endl;
 }
 
 
@@ -83,9 +84,9 @@ void RegEec::show(){
     }
     ReadReg(base_addr,kOffset,t);
     std::cerr<<"[Info]RegEec:"<<std::endl;
-    std::cerr<<"  kOffset   ="<< std::hex<<std::setfill('0') <<kOffset<<std::endl;
+    std::cerr<<"  kOffset   ="<< std::hex<<std::setfill('0')<<std::showbase << std::setw(8) <<kOffset<<std::endl;
     std::cerr<<"  .AUTO_RD  ="<< (IsFlagSet(t,kFlagAutoRd) ? '1' : '0')<<std::endl;
-    std::cerr<<"  AllFlags  ="<< std::hex<<std::setfill('0') <<t;
+    std::cerr<<"  AllFlags  ="<< std::hex<<std::setfill('0')<<std::showbase << std::setw(8) <<t << std::endl;
 }
 
 
@@ -98,10 +99,10 @@ void RegEemngctl::show(){
     }
     ReadReg(base_addr,kOffset,t);
     std::cerr<<"[Info]RegEemngctl:"<<std::endl;
-    std::cerr<<"  kOffset   ="<< std::hex<<std::setfill('0') <<kOffset<<std::endl;
+    std::cerr<<"  kOffset   ="<< std::hex<<std::setfill('0')<<std::showbase << std::setw(8) <<kOffset<<std::endl;
     std::cerr<<"  .CFG_DONE0  ="<< (IsFlagSet(t,kFlagCfgDone0) ? '1' : '0')<<std::endl;
     std::cerr<<"  .CFG_DONE1  ="<< (IsFlagSet(t,kFlagCfgDone1) ? '1' : '0')<<std::endl;
-    std::cerr<<"  AllFlags  ="<< std::hex<<std::setfill('0') <<t;
+    std::cerr<<"  AllFlags  ="<< std::hex<<std::setfill('0')<<std::showbase << std::setw(8) <<t << std::endl;
 }
 
 
@@ -113,9 +114,9 @@ void RegFcttvn::show(){
 // }
     // ReadReg(base_addr,kOffset,t);
     std::cerr<<"[Info]RegFcttvn:"<<std::endl;
-    std::cerr<<"  kOffset   ="<< std::hex<<std::setfill('0') <<kOffset<<std::endl;
+    std::cerr<<"  kOffset   ="<< std::hex<<std::setfill('0')<<std::showbase << std::setw(8) <<kOffset<<std::endl;
     std::cerr<<"  kNlimit   ="<< kNlimit  <<std::endl;
-    // std::cerr<<"  AllFlags  ="<< std::hex<<std::setfill('0') <<t;
+    // std::cerr<<"  AllFlags  ="<< std::hex<<std::setfill('0')<<std::showbase << std::setw(8) <<t << std::endl;
 }
 
 
@@ -126,9 +127,9 @@ void RegFcrtl::show(){
 // }
     // ReadReg(base_addr,kOffset,t);
     std::cerr<<"[Info]RegFcrtl:"<<std::endl;
-    std::cerr<<"  kOffset   ="<< std::hex<<std::setfill('0') <<kOffset<<std::endl;
+    std::cerr<<"  kOffset   ="<< std::hex<<std::setfill('0')<<std::showbase << std::setw(8) <<kOffset<<std::endl;
     std::cerr<<"  kNlimit   ="<< kNlimit  <<std::endl;
-    // std::cerr<<"  AllFlags  ="<< std::hex<<std::setfill('0') <<t;
+    // std::cerr<<"  AllFlags  ="<< std::hex<<std::setfill('0')<<std::showbase << std::setw(8) <<t << std::endl;
 }
 
 
@@ -139,9 +140,9 @@ void RegFcrth::show(){
 // }
     // ReadReg(base_addr,kOffset,t);
     std::cerr<<"[Info]RegFcrth:"<<std::endl;
-    std::cerr<<"  kOffset   ="<< std::hex<<std::setfill('0') <<kOffset<<std::endl;
+    std::cerr<<"  kOffset   ="<< std::hex<<std::setfill('0')<<std::showbase << std::setw(8) <<kOffset<<std::endl;
     std::cerr<<"  kNlimit   ="<< kNlimit  <<std::endl;
-    // std::cerr<<"  AllFlags  ="<< std::hex<<std::setfill('0') <<t;
+    // std::cerr<<"  AllFlags  ="<< std::hex<<std::setfill('0')<<std::showbase << std::setw(8) <<t << std::endl;
 }
 
 
@@ -153,7 +154,7 @@ void RegLinks::show(){
     }
     ReadReg(base_addr,kOffset,t);
     std::cerr<<"[Info]RegLinks:"<<std::endl;
-    std::cerr<<"  kOffset   ="<< std::hex<<std::setfill('0') <<kOffset<<std::endl;
+    std::cerr<<"  kOffset   ="<< std::hex<<std::setfill('0')<<std::showbase << std::setw(8) <<kOffset<<std::endl;
     std::cerr<<"  kOffsetLinkSpeed ="<< kOffsetLinkSpeed  <<std::endl;
     std::cerr<<"  .LinkStatusUp  ="<< (IsFlagSet(t,kFlagLinkStatusUp) ? '1' : '0')<<std::endl;
     std::cerr<<"  .LINK_SPEED = ";
@@ -163,7 +164,7 @@ void RegLinks::show(){
         case kValueLinkSpeed10G :  std::cerr<<" 10Gb/s"<<std::endl;break;
         default:  std::cerr<<" ERROR(Reserved value)"<<std::endl;break;
     }
-    std::cerr<<"  AllFlags  ="<< std::hex<<std::setfill('0') <<t;
+    std::cerr<<"  AllFlags  ="<< std::hex<<std::setfill('0')<<std::showbase << std::setw(8) <<t << std::endl;
 }
 
 void RegRa::show(int idx){
@@ -177,7 +178,7 @@ void RegRa::show(int idx){
     std::cerr<<"  kNlimit   ="<< kNlimit  <<std::endl;
     HwAddr ad(ntohll(t) >> 16);
     printf("% 3d: %d %s\n", idx, ad.Valid(), ad.FormatAddr().c_str());
-    // std::cerr<<"  AllFlags  ="<< std::hex<<std::setfill('0') <<t;
+    // std::cerr<<"  AllFlags  ="<< std::hex<<std::setfill('0')<<std::showbase << std::setw(8) <<t << std::endl;
 }
 
 
