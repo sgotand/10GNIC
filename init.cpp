@@ -101,8 +101,7 @@ void initialize_hardware(void *addr) {
 
 ReceiveQueue* initialize_receive(void *regspace, phys_addr physbase, void *virtbase, size_t descnum, size_t bufsz) {
     uint32_t buf32;
-
-    assert((physbase & ~(1024-1)) == 0);
+    assert((physbase & (1024ll-1ll)) == 0);
     assert(descnum % 8 == 0);
     assert(bufsz % 1024 == 0);
 
@@ -138,7 +137,7 @@ ReceiveQueue* initialize_receive(void *regspace, phys_addr physbase, void *virtb
 TransmitQueue* initialize_transmit(void *regspace, phys_addr physbase, void *virtbase, size_t descnum , size_t bufsz) {
     uint32_t buf32;
 
-    assert((physbase & ~(1024-1)) == 0);
+    assert((physbase & (1024-1)) == 0);
     assert(descnum % 8 == 0);
 
     ReadReg(regspace, RegDmatxctl::kOffset, buf32);
